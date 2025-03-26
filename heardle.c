@@ -57,7 +57,12 @@ bool submitAnswer(int answer_index, int round_index) {  // returns true if answe
         return true;
     } else return false;
 }
+/*
 
+pollKeyboard checks for PS2 keyboard input:
+    if W, increase difficulty
+    if enter, call submitAnswer -> needs parameter change
+*/
 void pollKeyboard() {
     volatile int *PS2_ptr = (int *)PS2_BASE;
     int PS2_data = *(PS2_ptr);  // get value of PS2 data register
