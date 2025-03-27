@@ -20,6 +20,7 @@ short int Buffer2[240][512];
 #define PS2_DATA_BITS 0xFF   // data bits of PS2_Data register
 
 #define TOTAL_ROUNDS 5  // total number of rounds
+#define MAX_SONG_LENGTH 40
 
 const char *Songs[] = {
     "Stronger",
@@ -83,7 +84,7 @@ GLOBAL VARIABLES
 int PlayerScore = 0;      // total score
 int RoundDifficulty = 1;  // the number of seconds the music will play for, inversely proportional to amount of points gained on correct answer
 int Round = 1;
-char currentAnswers[4][40] = {
+char currentAnswers[4][MAX_SONG_LENGTH] = {
 
 };
 bool doneGame = false;
@@ -101,7 +102,7 @@ FUNCTION PROTOTYPES
 */
 void clearScreen();
 bool isValidKey(char key);
-bool checkAnswer(int answer_index, int round_index);
+bool checkAnswer(char answer[MAX_SONG_LENGTH]);
 bool submitAnswer(int answer_index, int round_index);
 void pollKeyboard();
 void drawCharacter();
@@ -255,7 +256,7 @@ void clearScreen() {  // loops through each pixel and sets to black
 // WIP
 void drawStartScreen() {  // clears screen then draws title text
     char str[] = "HEARDLE";
-    writeWord(&str, 5, 5);
+    writeWord(&str, 20, 40);
 }
 
 bool isValidKey(char key) {
@@ -265,8 +266,9 @@ bool isValidKey(char key) {
     return false;
 }
 
-bool checkAnswer(int answer_index, int round_index) {  // temp, will return whether or not user's answer is correct
-    return true;
+bool checkAnswer(char answer[MAX_SONG_LENGTH]) {             // temp, will return whether or not user's answer is correct
+    if (strcmp(answer, Songs[Round - 1]) == 0) return true;  // if argument is same as round's answer, return true
+    return false;
 }
 
 bool submitAnswer(int answer_index, int round_index) {  // returns true if answer is right, false if answer is wrong, resets roundDifficulty to 1
@@ -275,7 +277,7 @@ bool submitAnswer(int answer_index, int round_index) {  // returns true if answe
     if (Round >= TOTAL_ROUNDS) doneGame = true;  // done game if that was final round
     else Round++;                                // add one to round
 
-    if (checkAnswer(answer_index, round_index)) {
+    if (checkAnswer("temp")) {  // REPLACE ARG
         PlayerScore += 10 - 2 * (prev_round_difficulty - 1);
         return true;
     } else return false;
