@@ -86,6 +86,7 @@ int Round = 1;
 char currentAnswers[4][40] = {
 
 };
+bool doneGame = false;
 
 /*
 GLOBAL VARIABLES
@@ -151,12 +152,14 @@ int main(void) {
     }
     clearScreen();
     clearCharacterBuffer();
-    while (1) {
+    while (!doneGame) {  // while game is going on
         pollKeyboard();
 
         wait_for_vsync();
         pixel_buffer_start = *(pixel_ctrl_ptr + 1);  // new back buffer
     }
+
+    // done game screen
     return 0;
 }
 
@@ -269,7 +272,9 @@ bool checkAnswer(int answer_index, int round_index) {  // temp, will return whet
 bool submitAnswer(int answer_index, int round_index) {  // returns true if answer is right, false if answer is wrong, resets roundDifficulty to 1
     int prev_round_difficulty = RoundDifficulty;
     RoundDifficulty = 1;
-    Round++;
+    if (Round >= TOTAL_ROUNDS) doneGame = true;  // done game if that was final round
+    else Round++;                                // add one to round
+
     if (checkAnswer(answer_index, round_index)) {
         PlayerScore += 10 - 2 * (prev_round_difficulty - 1);
         return true;
@@ -310,6 +315,11 @@ void pollKeyboard() {
             writeWord(CurrentRoundStr, 1, 1);
             sprintf(CurrentRoundStr, "%d", Round);
             writeWord(CurrentRoundStr, 8, 1);
+            strcpy(CurrentRoundStr, "/");
+            writeWord(CurrentRoundStr, 10, 1);
+            sprintf(CurrentRoundStr, "%d", TOTAL_ROUNDS);
+            if (TOTAL_ROUNDS < 10) writeWord(CurrentRoundStr, 12, 1);
+            else writeWord(CurrentRoundStr, 11, 1);
 
             // display score
             char PlayerScoreStr[10];
