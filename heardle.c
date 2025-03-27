@@ -19,6 +19,8 @@ short int Buffer2[240][512];
 #define RVALID_BIT 0x8000    // RVALID bit of PS2_Data register
 #define PS2_DATA_BITS 0xFF   // data bits of PS2_Data register
 
+#define TOTAL_ROUNDS 5  // total number of rounds
+
 const char *Songs[] = {
     "Stronger",
     "Power",
@@ -73,11 +75,6 @@ char validKeysArr[] = {
     KEY_W};
 int sizeOfValidKeysArr = sizeof(validKeysArr) / sizeof(validKeysArr[0]);  // dynamically calculates size from array
 
-typedef struct {
-    int x, y, prevx, prevy, dx, dy;
-    short int colour;
-} Box;
-
 /*
 GLOBAL VARIABLES
 GLOBAL VARIABLES
@@ -90,38 +87,6 @@ char currentAnswers[4][40] = {
 
 };
 
-// seed the RNG
-void seedRandom() {
-    srand(time(NULL));
-}
-// return random number in range inclusive
-int randomInRange(int min, int max) {
-    if (min > max) {
-        // Swap if min > max
-        int temp = min;
-        min = max;
-        max = temp;
-    }
-    return rand() % (max - min + 1) + min;
-}
-void loadCurrentAnswers() {  // take current correct answer from index of round, and take 3 random songs from after the index
-    int a = 0, b = 0, c = 0, d = 0;
-    int temp;
-    for (int i = 0; i < 4; i++) {
-        temp = randomInRange(Round, numSongs - 1);  // index between item after right answer and end of song array
-        while (temp == a || temp == b || temp == c || temp == d) {
-            temp = randomInRange(Round, numSongs - 1);
-        }
-        // there is 100% a better way to do this function
-        if (i == 0) a = temp;
-        else if (i == 1) b = temp;
-        else if (i == 2) c = temp;
-        else if (i == 3) d = temp;
-        strcpy(currentAnswers[i], Songs[temp]);  // COPY "RANDOM" SONG INTO CURRENT ANSWERS
-    }
-    int i = randomInRange(0, 3);
-    strcpy(currentAnswers[i], Songs[Round - 1]);
-}
 /*
 GLOBAL VARIABLES
 GLOBAL VARIABLES
@@ -142,6 +107,9 @@ void drawCharacter();
 void clearCharacterBuffer();
 void writeCharacter(char character, int x, int y);
 void drawStartScreen();
+void seedRandom();
+int randomInRange(int min, int max);
+void loadCurrentAnswers();
 
 /*
 FUNCTION PROTOTYPES
@@ -190,6 +158,39 @@ int main(void) {
         pixel_buffer_start = *(pixel_ctrl_ptr + 1);  // new back buffer
     }
     return 0;
+}
+
+// seed the RNG
+void seedRandom() {
+    srand(time(NULL));
+}
+// return random number in range inclusive
+int randomInRange(int min, int max) {
+    if (min > max) {
+        // Swap if min > max
+        int temp = min;
+        min = max;
+        max = temp;
+    }
+    return rand() % (max - min + 1) + min;
+}
+void loadCurrentAnswers() {  // take current correct answer from index of round, and take 3 random songs from after the index
+    int a = 0, b = 0, c = 0, d = 0;
+    int temp;
+    for (int i = 0; i < 4; i++) {
+        temp = randomInRange(Round, numSongs - 1);  // index between item after right answer and end of song array
+        while (temp == a || temp == b || temp == c || temp == d) {
+            temp = randomInRange(Round, numSongs - 1);
+        }
+        // there is 100% a better way to do this function
+        if (i == 0) a = temp;
+        else if (i == 1) b = temp;
+        else if (i == 2) c = temp;
+        else if (i == 3) d = temp;
+        strcpy(currentAnswers[i], Songs[temp]);  // COPY "RANDOM" SONG INTO CURRENT ANSWERS
+    }
+    int i = randomInRange(0, 3);
+    strcpy(currentAnswers[i], Songs[Round - 1]);
 }
 
 void writeCharacter(char character, int x, int y) {
@@ -295,18 +296,27 @@ void pollKeyboard() {
         if (isValidKey(temp_key)) keyboard_keys.key = temp_key;
         else keyboard_keys.key = KEY_NOT_VALID;
 
-        if ((keyboard_keys.key == KEY_W && keyboard_keys.last_last_key == KEY_NULL)) {
+        if ((keyboard_keys.key == KEY_W && keyboard_keys.last_last_key == KEY_NULL)) {  // IF W IS PRESSED (decrease current round difficulty)
             if (RoundDifficulty < 5) RoundDifficulty++;
             // else do nothing
             printf("Round Difficulty: %d\n", RoundDifficulty);
-        } else if (keyboard_keys.key == KEY_ENTER && keyboard_keys.last_last_key == KEY_NULL) {
+        } else if (keyboard_keys.key == KEY_ENTER && keyboard_keys.last_last_key == KEY_NULL) {  // IF ENTER IS PRESSED (submit answer / next round)
             submitAnswer(0, 0);
             printf("New Score: %d\n", PlayerScore);
+
+            // display round number
+            char CurrentRoundStr[20];
+            strcpy(CurrentRoundStr, "Round: ");
+            writeWord(CurrentRoundStr, 1, 1);
+            sprintf(CurrentRoundStr, "%d", Round);
+            writeWord(CurrentRoundStr, 8, 1);
+
+            // display score
             char PlayerScoreStr[10];
             sprintf(&PlayerScoreStr, "%d", PlayerScore);
             char score_label_str[] = "Score: ";
-            writeWord(score_label_str, 1, 1);
-            writeWord(PlayerScoreStr, 8, 1);
+            writeWord(score_label_str, 1, 2);
+            writeWord(PlayerScoreStr, 8, 2);
         }
 
         printf("Keys: %x, %x, %x\n", keyboard_keys.key, keyboard_keys.last_key, keyboard_keys.last_last_key);
