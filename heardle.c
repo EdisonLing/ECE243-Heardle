@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+
 #define LEDR_BASE 0xFF200000
 
 #define PIXEL_BUFFER_BASE 0xFF203020
@@ -16,6 +18,30 @@ short int Buffer2[240][512];
 #define PS2_BASE 0xFF200100  // PS2 base address
 #define RVALID_BIT 0x8000    // RVALID bit of PS2_Data register
 #define PS2_DATA_BITS 0xFF   // data bits of PS2_Data register
+
+const char *Songs[] = {
+    "Stronger",
+    "Power",
+    "Heartless",
+    "Gold Digger",
+    "Flashing Lights",
+    "All of the Lights",
+    "Runaway",
+    "Bound 2",
+    "Black Skinhead",
+    "Famous",
+    "Ultralight Beam",
+    "Ghost Town",
+    "I Wonder",
+    "Can't Tell Me Nothing",
+    "Touch the Sky",
+    "Jesus Walks",
+    "Homecoming",
+    "Love Lockdown",
+    "Good Morning",
+    "Father Stretch My Hands Pt. 1"};
+
+int numSongs = 20;
 
 // constants for PS2 code to actual key
 #define KEY_1 0x16
@@ -59,6 +85,43 @@ GLOBAL VARIABLES
 */
 int PlayerScore = 0;      // total score
 int RoundDifficulty = 1;  // the number of seconds the music will play for, inversely proportional to amount of points gained on correct answer
+int Round = 1;
+char currentAnswers[4][40] = {
+
+};
+
+// seed the RNG
+void seedRandom() {
+    srand(time(NULL));
+}
+// return random number in range inclusive
+int randomInRange(int min, int max) {
+    if (min > max) {
+        // Swap if min > max
+        int temp = min;
+        min = max;
+        max = temp;
+    }
+    return rand() % (max - min + 1) + min;
+}
+void loadCurrentAnswers() {  // take current correct answer from index of round, and take 3 random songs from after the index
+    int a = 0, b = 0, c = 0, d = 0;
+    int temp;
+    for (int i = 0; i < 4; i++) {
+        temp = randomInRange(Round, numSongs - 1);  // index between item after right answer and end of song array
+        while (temp == a || temp == b || temp == c || temp == d) {
+            temp = randomInRange(Round, numSongs - 1);
+        }
+        // there is 100% a better way to do this function
+        if (i == 0) a = temp;
+        else if (i == 1) b = temp;
+        else if (i == 2) c = temp;
+        else if (i == 3) d = temp;
+        strcpy(currentAnswers[i], Songs[temp]);  // COPY "RANDOM" SONG INTO CURRENT ANSWERS
+    }
+    int i = randomInRange(0, 3);
+    strcpy(currentAnswers[i], Songs[Round - 1]);
+}
 /*
 GLOBAL VARIABLES
 GLOBAL VARIABLES
@@ -205,6 +268,7 @@ bool checkAnswer(int answer_index, int round_index) {  // temp, will return whet
 bool submitAnswer(int answer_index, int round_index) {  // returns true if answer is right, false if answer is wrong, resets roundDifficulty to 1
     int prev_round_difficulty = RoundDifficulty;
     RoundDifficulty = 1;
+    Round++;
     if (checkAnswer(answer_index, round_index)) {
         PlayerScore += 10 - 2 * (prev_round_difficulty - 1);
         return true;
@@ -238,6 +302,11 @@ void pollKeyboard() {
         } else if (keyboard_keys.key == KEY_ENTER && keyboard_keys.last_last_key == KEY_NULL) {
             submitAnswer(0, 0);
             printf("New Score: %d\n", PlayerScore);
+            char PlayerScoreStr[10];
+            sprintf(&PlayerScoreStr, "%d", PlayerScore);
+            char score_label_str[] = "Score: ";
+            writeWord(score_label_str, 1, 1);
+            writeWord(PlayerScoreStr, 8, 1);
         }
 
         printf("Keys: %x, %x, %x\n", keyboard_keys.key, keyboard_keys.last_key, keyboard_keys.last_last_key);
