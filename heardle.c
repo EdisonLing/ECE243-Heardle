@@ -19,6 +19,9 @@ short int Buffer2[240][512];
 #define RVALID_BIT 0x8000    // RVALID bit of PS2_Data register
 #define PS2_DATA_BITS 0xFF   // data bits of PS2_Data register
 
+#define SCREEN_WIDTH_CHARS 80
+#define SCREEN_HEIGHT_CHARS 60
+
 #define TOTAL_ROUNDS 5  // total number of rounds
 #define MAX_SONG_LENGTH 40
 
@@ -153,12 +156,16 @@ int main(void) {
     }
     clearScreen();
     clearCharacterBuffer();
+    writeRoundAndScore(0);
     while (!doneGame) {  // while game is going on
         pollKeyboard();
 
         wait_for_vsync();
         pixel_buffer_start = *(pixel_ctrl_ptr + 1);  // new back buffer
     }
+
+    clearCharacterBuffer();
+    drawEndScreen();
 
     // done game screen
     return 0;
@@ -254,9 +261,43 @@ void clearScreen() {  // loops through each pixel and sets to black
 }
 
 // WIP
+// helpers to find x and y coords to center text
+int calculateCenterText_X(char str[]) {
+    int size = getStringSize(str);
+    return (SCREEN_WIDTH_CHARS - size) / 2;
+}
+int calculateCenterText_Y(char str[]) {
+    int size = getStringSize(str);
+    return SCREEN_HEIGHT_CHARS / 2;
+}
+
 void drawStartScreen() {  // clears screen then draws title text
     char str[] = "HEARDLE";
     writeWord(&str, 20, 40);
+}
+
+void drawEndScreen() {
+    char str[MAX_SONG_LENGTH];
+    if (PlayerScore >= 10 * TOTAL_ROUNDS) {  // perfect score
+        strcpy(str, "PERFECT!!!!!");
+
+    } else if (PlayerScore >= 9 * TOTAL_ROUNDS) {  // almost perfect
+        strcpy(str, "amazing job!");
+
+    } else if (PlayerScore >= 7 * TOTAL_ROUNDS) {  // good
+        strcpy(str, "you actually did pretty good");
+
+    } else if (PlayerScore >= 4 * TOTAL_ROUNDS) {  // decent
+        strcpy(str, "at least you got some right i guess...");
+
+    } else if (PlayerScore >= 2 * TOTAL_ROUNDS) {  // bad
+        strcpy(str, "ermm... do you even listen to music?");
+
+    } else {  // horrible
+        strcpy(str, "dude, you suck at this...");
+    }
+    writeWord(&str, calculateCenterText_X(&str), calculateCenterText_Y(&str));
+    writeRoundAndScore(1);
 }
 
 bool isValidKey(char key) {
@@ -277,7 +318,7 @@ bool submitAnswer(int answer_index, int round_index) {  // returns true if answe
     if (Round >= TOTAL_ROUNDS) doneGame = true;  // done game if that was final round
     else Round++;                                // add one to round
 
-    if (checkAnswer("temp")) {  // REPLACE ARG
+    if (checkAnswer("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")) {  // REPLACE ARG
         PlayerScore += 10 - 2 * (prev_round_difficulty - 1);
         return true;
     } else return false;
@@ -288,6 +329,35 @@ pollKeyboard checks for PS2 keyboard input:
     if W, increase difficulty
     if enter, call submitAnswer -> needs parameter change
 */
+void writeRoundAndScore(bool endScreen) {
+    // display round number
+    char CurrentRoundStr[20];
+    strcpy(CurrentRoundStr, "Round: ");
+    writeWord(CurrentRoundStr, 1, 1);
+    sprintf(CurrentRoundStr, "%d", Round);
+    writeWord(CurrentRoundStr, 8, 1);
+    strcpy(CurrentRoundStr, "/");
+    writeWord(CurrentRoundStr, 10, 1);
+    sprintf(CurrentRoundStr, "%d", TOTAL_ROUNDS);
+    if (TOTAL_ROUNDS < 10) writeWord(CurrentRoundStr, 12, 1);
+    else writeWord(CurrentRoundStr, 11, 1);
+    if (!endScreen) {  // normal
+        // display score
+        char PlayerScoreStr[10];
+        sprintf(&PlayerScoreStr, "%d", PlayerScore);
+        char score_label_str[] = "Score: ";
+        writeWord(score_label_str, 1, 2);
+        writeWord(PlayerScoreStr, 8, 2);
+    } else {  // end screen, move score
+        // display score
+        char PlayerScoreStr[10];
+        sprintf(&PlayerScoreStr, "%d", PlayerScore);
+        char score_label_str[] = "Score: ";
+        writeWord(score_label_str, calculateCenterText_X(&score_label_str) - 3, 2);
+        writeWord(PlayerScoreStr, calculateCenterText_X(&score_label_str) + 4, 2);
+    }
+}
+
 void pollKeyboard() {
     volatile int *PS2_ptr = (int *)PS2_BASE;
     int PS2_data = *(PS2_ptr);  // get value of PS2 data register
@@ -311,24 +381,7 @@ void pollKeyboard() {
             submitAnswer(0, 0);
             printf("New Score: %d\n", PlayerScore);
 
-            // display round number
-            char CurrentRoundStr[20];
-            strcpy(CurrentRoundStr, "Round: ");
-            writeWord(CurrentRoundStr, 1, 1);
-            sprintf(CurrentRoundStr, "%d", Round);
-            writeWord(CurrentRoundStr, 8, 1);
-            strcpy(CurrentRoundStr, "/");
-            writeWord(CurrentRoundStr, 10, 1);
-            sprintf(CurrentRoundStr, "%d", TOTAL_ROUNDS);
-            if (TOTAL_ROUNDS < 10) writeWord(CurrentRoundStr, 12, 1);
-            else writeWord(CurrentRoundStr, 11, 1);
-
-            // display score
-            char PlayerScoreStr[10];
-            sprintf(&PlayerScoreStr, "%d", PlayerScore);
-            char score_label_str[] = "Score: ";
-            writeWord(score_label_str, 1, 2);
-            writeWord(PlayerScoreStr, 8, 2);
+            writeRoundAndScore(0);
         }
 
         printf("Keys: %x, %x, %x\n", keyboard_keys.key, keyboard_keys.last_key, keyboard_keys.last_last_key);
