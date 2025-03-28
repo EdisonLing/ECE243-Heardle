@@ -87,6 +87,7 @@ GLOBAL VARIABLES
 int PlayerScore = 0;      // total score
 int RoundDifficulty = 1;  // the number of seconds the music will play for, inversely proportional to amount of points gained on correct answer
 int Round = 1;
+int SelectedAnswer = -1;
 char currentAnswers[4][MAX_SONG_LENGTH] = {
 
 };
@@ -106,7 +107,7 @@ FUNCTION PROTOTYPES
 void clearScreen();
 bool isValidKey(char key);
 bool checkAnswer(char answer[MAX_SONG_LENGTH]);
-bool submitAnswer(int answer_index, int round_index);
+bool submitAnswer(int answer_index);
 void pollKeyboard();
 void drawCharacter();
 void clearCharacterBuffer();
@@ -161,6 +162,7 @@ int main(void) {
     clearScreen();
     clearCharacterBuffer();
     writeRoundAndScore(0);
+    loadCurrentAnswers();
     while (!doneGame) {  // while game is going on
         pollKeyboard();
 
@@ -208,6 +210,7 @@ void loadCurrentAnswers() {  // take current correct answer from index of round,
     }
     int i = randomInRange(0, 3);
     strcpy(currentAnswers[i], Songs[Round - 1]);
+    printf("Answers: %s, %s, %s, %s\n", currentAnswers[0], currentAnswers[1], currentAnswers[2], currentAnswers[3]);
 }
 
 void writeCharacter(char character, int x, int y) {
@@ -318,16 +321,20 @@ bool checkAnswer(char answer[MAX_SONG_LENGTH]) {             // temp, will retur
     return false;
 }
 
-bool submitAnswer(int answer_index, int round_index) {  // returns true if answer is right, false if answer is wrong, resets roundDifficulty to 1
+bool submitAnswer(int answer_index) {  // returns true if answer is right, false if answer is wrong, resets roundDifficulty to 1
     int prev_round_difficulty = RoundDifficulty;
     RoundDifficulty = 1;
-    if (Round >= TOTAL_ROUNDS) doneGame = true;  // done game if that was final round
-    else Round++;                                // add one to round
-
-    if (checkAnswer("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")) {  // REPLACE ARG
+    SelectedAnswer = -1;                              // reset selected answer to avoid keeping selection through rounds
+    if (Round >= TOTAL_ROUNDS) doneGame = true;       // done game if that was final round
+    else Round++;                                     // add one to round
+    if (checkAnswer(currentAnswers[answer_index])) {  // REPLACE ARG
+        if (!doneGame) loadCurrentAnswers();
         PlayerScore += 10 - 2 * (prev_round_difficulty - 1);
         return true;
-    } else return false;
+    } else {
+        if (!doneGame) loadCurrentAnswers();
+        return false;
+    }
 }
 /*
 
@@ -379,18 +386,24 @@ void pollKeyboard() {
         if (isValidKey(temp_key)) keyboard_keys.key = temp_key;
         else keyboard_keys.key = KEY_NOT_VALID;
 
-        if ((keyboard_keys.key == KEY_W && keyboard_keys.last_last_key == KEY_NULL)) {  // IF W IS PRESSED (decrease current round difficulty)
+        if ((keyboard_keys.key == KEY_W && keyboard_keys.last_last_key == KEY_NULL && SelectedAnswer != -1)) {  // IF W IS PRESSED (decrease current round difficulty)
             if (RoundDifficulty < 5) RoundDifficulty++;
             // else do nothing
             // printf("Round Difficulty: %d\n", RoundDifficulty);
         } else if (keyboard_keys.key == KEY_ENTER && keyboard_keys.last_last_key == KEY_NULL) {  // IF ENTER IS PRESSED (submit answer / next round)
-            submitAnswer(0, 0);
+            submitAnswer(SelectedAnswer - 1);
             // printf("New Score: %d\n", PlayerScore);
 
             writeRoundAndScore(0);
+        } else if (keyboard_keys.key == KEY_1 && keyboard_keys.last_last_key == KEY_NULL) {
+            SelectedAnswer = 1;
+        } else if (keyboard_keys.key == KEY_2 && keyboard_keys.last_last_key == KEY_NULL) {
+            SelectedAnswer = 2;
+        } else if (keyboard_keys.key == KEY_3 && keyboard_keys.last_last_key == KEY_NULL) {
+            SelectedAnswer = 3;
+        } else if (keyboard_keys.key == KEY_4 && keyboard_keys.last_last_key == KEY_NULL) {
+            SelectedAnswer = 4;
         }
-
-        // printf("Keys: %x, %x, %x\n", keyboard_keys.key, keyboard_keys.last_key, keyboard_keys.last_last_key);
     }
 }
 
