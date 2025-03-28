@@ -5111,6 +5111,19 @@ int stronger_audio[] = {
 };
 int stronger_audio_len = 40000;
 
+int power_audio[] = {};
+int power_audio_len = 0;
+int heartless_audio[] = {};
+int heartless_audio_len = 0;
+
+
+int *SongsSamples[] = {stronger_audio, power_audio, heartless_audio
+
+};
+int SongsSamplesLen[] = {40000, 0, 0
+
+};
+
 
 /*
 FUNCTION PROTOTYPES
@@ -5531,7 +5544,7 @@ void pollKeyboard() {
             // else do nothing
             // printf("Round Difficulty: %d\n", RoundDifficulty);
         }else if(keyboard_keys.key == KEY_SPACE && keyboard_keys.last_last_key == KEY_NULL && gameStart && !doneGame){
-            playAudio(stronger_audio, stronger_audio_len);
+            playAudio(SongsSamples[Round - 1], SongsSamplesLen[Round - 1] * RoundDifficulty / 5);
         } 
         else if (keyboard_keys.key == KEY_ENTER && keyboard_keys.last_last_key == KEY_NULL && SelectedAnswer != -1) {  // IF ENTER IS PRESSED (submit answer / next round)
             submitAnswer(SelectedAnswer - 1);
