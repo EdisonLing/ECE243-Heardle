@@ -5135,6 +5135,7 @@ int calculateCenterText_Y(char str[]);
 void drawEndScreen();
 void writeAnswersAndSelected();
 void playAudio(const int *samples, int length);
+void writeRoundDifficulty();
 
 /*
 FUNCTION PROTOTYPES
@@ -5200,6 +5201,7 @@ int main(void) {
     writeRoundAndScore(0);
     loadCurrentAnswers();
     writeAnswersAndSelected();
+    writeRoundDifficulty();
     while (!doneGame) {  // while game is going on
         pollKeyboard();
 
@@ -5261,7 +5263,7 @@ void loadCurrentAnswers() {  // take current correct answer from index of round,
     }
     int i = randomInRange(0, 3);
     strcpy(currentAnswers[i], Songs[Round - 1]);
-    printf("Answers: %s, %s, %s, %s\n", currentAnswers[0], currentAnswers[1], currentAnswers[2], currentAnswers[3]);
+    //printf("Answers: %s, %s, %s, %s\n", currentAnswers[0], currentAnswers[1], currentAnswers[2], currentAnswers[3]);
 }
 
 void writeCharacter(char character, int x, int y) {
@@ -5393,6 +5395,27 @@ pollKeyboard checks for PS2 keyboard input:
     if W, increase difficulty
     if enter, call submitAnswer -> needs parameter change
 */
+
+void writeRoundDifficulty(){
+    char difficultyBar[60];
+    if(RoundDifficulty == 1){
+        strcpy(difficultyBar,"[<<<<<][-----][-----][-----][-----]");
+    }
+    else if(RoundDifficulty == 2){
+        strcpy(difficultyBar, "[<<<<<][<<<<<][-----][-----][-----]");
+    }
+    else if(RoundDifficulty == 3){
+        strcpy(difficultyBar, "[<<<<<][<<<<<][<<<<<][-----][-----]");
+    }
+    else if(RoundDifficulty == 4){
+        strcpy(difficultyBar, "[<<<<<][<<<<<][<<<<<][<<<<<][-----]");
+    }
+    else{
+        strcpy(difficultyBar, "[<<<<<][<<<<<][<<<<<][<<<<<][<<<<<]");
+    }
+    writeWord(difficultyBar, calculateCenterText_X(difficultyBar), (ANSWERS_ROW_1 - 5));
+}
+
 void writeRoundAndScore(bool endScreen) {
     // display round number
     char CurrentRoundStr[20];
@@ -5504,6 +5527,7 @@ void pollKeyboard() {
 
         if ((keyboard_keys.key == KEY_W && keyboard_keys.last_last_key == KEY_NULL)) {  // IF W IS PRESSED (decrease current round difficulty)
             if (RoundDifficulty < 5) RoundDifficulty++;
+            writeRoundDifficulty();
             // else do nothing
             // printf("Round Difficulty: %d\n", RoundDifficulty);
         }else if(keyboard_keys.key == KEY_SPACE && keyboard_keys.last_last_key == KEY_NULL && gameStart && !doneGame){
@@ -5512,6 +5536,7 @@ void pollKeyboard() {
         else if (keyboard_keys.key == KEY_ENTER && keyboard_keys.last_last_key == KEY_NULL && SelectedAnswer != -1) {  // IF ENTER IS PRESSED (submit answer / next round)
             submitAnswer(SelectedAnswer - 1);
             writeAnswersAndSelected();
+            writeRoundDifficulty();
             // printf("New Score: %d\n", PlayerScore);
 
             writeRoundAndScore(0);
