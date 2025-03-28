@@ -19,6 +19,8 @@ short int Buffer2[240][512];
 #define RVALID_BIT 0x8000    // RVALID bit of PS2_Data register
 #define PS2_DATA_BITS 0xFF   // data bits of PS2_Data register
 
+#define AUDIO_BASE 0xFF203040  // base for audio registers
+
 #define SCREEN_WIDTH_CHARS 80
 #define SCREEN_HEIGHT_CHARS 60
 
@@ -125,6 +127,8 @@ void wait_for_vsync();
 void writeRoundAndScore(bool endScreen);
 int calculateCenterText_Y(char str[]);
 void drawEndScreen();
+void writeAnswersAndSelected();
+void playAudio(const int *samples, int length);
 
 /*
 FUNCTION PROTOTYPES
@@ -137,8 +141,28 @@ typedef struct {
 } keyboard_keys_struct;
 
 keyboard_keys_struct keyboard_keys = {KEY_NULL, KEY_NULL, KEY_NULL};
+typedef struct {
+    volatile unsigned int control;    // control/status register
+    volatile unsigned char RARC;      // 8 bit RARC register
+    volatile unsigned char RALC;      // 8 bit RALC register
+    volatile unsigned char WDRC;      // 8 bit WSRC register
+    volatile unsigned char WSLC;      // 8 bit WSLC register
+    volatile unsigned int LEFTDATA;   // 32 bit left data register
+    volatile unsigned int RIGHTDATA;  // 32 bit right data register
+} audio_t;
+
+typedef struct {
+    int index;
+    char name[40];
+    int length;
+} Song_Struct;
+Song_Struct Stronger = {0, "Stronger", 17309};
+Song_Struct Power = {1, "Power", 16874};
+Song_Struct Heartless = {2, "Heartless", 17920};
 
 int main(void) {
+    seedRandom();  // randomize answers based on time
+
     volatile int *pixel_ctrl_ptr = (int *)PIXEL_BUFFER_BASE;
     /* set front pixel buffer to Buffer 1 */
     *(pixel_ctrl_ptr + 1) = (int)&Buffer1;  // first store the address in the  back buffer
@@ -169,6 +193,7 @@ int main(void) {
     writeRoundAndScore(0);
     loadCurrentAnswers();
     writeAnswersAndSelected();
+    playAudio(stronger_5sec, 80000);
     while (!doneGame) {  // while game is going on
         pollKeyboard();
 
@@ -183,6 +208,20 @@ int main(void) {
 
     // done game screen
     return 0;
+}
+
+void playAudio(const int *samples, int length) {
+    // get struct for audio I/O
+    audio_t *const audio = (audio_t *)AUDIO_BASE;
+    int i;
+    audio->control = 0x8;  // clear the output FIFOs
+    audio->control = 0x0;  // resume input conversion
+    for (i = 0; i < length; i++) {
+        // wait till there is space in the output FIFO
+        while (audio->RARC == 0 || audio->RALC == 0);
+        audio->LEFTDATA = samples[i] << 18;
+        audio->RIGHTDATA = samples[i] << 18;
+    }
 }
 
 // seed the RNG
@@ -410,7 +449,7 @@ void writeAnswersAndSelected() {
     // write 4
     writeWord(currentAnswers[3], ANSWERS_COL_2, ANSWERS_ROW_2);
 
-    char label[3];
+    char label[4];
     // write label 1
     strcpy(label, "[1]");
     writeWord(label, ANSWERS_COL_1 - 4, ANSWERS_ROW_1);
