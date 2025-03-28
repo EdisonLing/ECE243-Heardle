@@ -377,7 +377,19 @@ void writeRoundAndScore(bool endScreen) {
     }
 }
 
-void writeSelectedSymbols(int x, int y) {
+void clearHighlightedAnswers() {
+    char clear[2] = "  ";
+    writeWord(clear, ANSWERS_COL_1 - 6, ANSWERS_ROW_1);
+    writeWord(clear, ANSWERS_COL_1 + getStringSize(currentAnswers[0]), ANSWERS_ROW_1);
+
+    writeWord(clear, ANSWERS_COL_2 - 6, ANSWERS_ROW_1);
+    writeWord(clear, ANSWERS_COL_2 + getStringSize(currentAnswers[1]), ANSWERS_ROW_1);
+
+    writeWord(clear, ANSWERS_COL_1 - 6, ANSWERS_ROW_2);
+    writeWord(clear, ANSWERS_COL_1 + getStringSize(currentAnswers[2]), ANSWERS_ROW_2);
+
+    writeWord(clear, ANSWERS_COL_2 - 6, ANSWERS_ROW_2);
+    writeWord(clear, ANSWERS_COL_2 + getStringSize(currentAnswers[3]), ANSWERS_ROW_2);
 }
 
 void writeAnswersAndSelected() {
@@ -413,6 +425,21 @@ void writeAnswersAndSelected() {
     writeWord(label, ANSWERS_COL_2 - 4, ANSWERS_ROW_2);
 
     // highlight selected
+    char highlight_front[3] = "<<";
+    char highlight_end[3] = ">>";
+    if (SelectedAnswer == 1) {
+        writeWord(highlight_front, ANSWERS_COL_1 - 6, ANSWERS_ROW_1);
+        writeWord(highlight_end, ANSWERS_COL_1 + getStringSize(currentAnswers[0]), ANSWERS_ROW_1);
+    } else if (SelectedAnswer == 2) {
+        writeWord(highlight_front, ANSWERS_COL_2 - 6, ANSWERS_ROW_1);
+        writeWord(highlight_end, ANSWERS_COL_2 + getStringSize(currentAnswers[1]), ANSWERS_ROW_1);
+    } else if (SelectedAnswer == 3) {
+        writeWord(highlight_front, ANSWERS_COL_1 - 6, ANSWERS_ROW_2);
+        writeWord(highlight_end, ANSWERS_COL_1 + getStringSize(currentAnswers[2]), ANSWERS_ROW_2);
+    } else if (SelectedAnswer == 4) {
+        writeWord(highlight_front, ANSWERS_COL_2 - 6, ANSWERS_ROW_2);
+        writeWord(highlight_end, ANSWERS_COL_2 + getStringSize(currentAnswers[3]), ANSWERS_ROW_2);
+    }
 }
 
 void pollKeyboard() {
