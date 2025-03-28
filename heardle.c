@@ -115,6 +115,10 @@ void drawStartScreen();
 void seedRandom();
 int randomInRange(int min, int max);
 void loadCurrentAnswers();
+void wait_for_vsync();
+void writeRoundAndScore(bool endScreen);
+int calculateCenterText_Y(char str[]);
+void drawEndScreen();
 
 /*
 FUNCTION PROTOTYPES
@@ -166,6 +170,8 @@ int main(void) {
 
     clearCharacterBuffer();
     drawEndScreen();
+    while (1) {
+    }
 
     // done game screen
     return 0;
@@ -221,13 +227,13 @@ int getStringSize(char *word) {
     while (word[size] != '\0') {
         size++;
     }
-    printf("'%s' is %d characters long\n", word, size);
+    // printf("'%s' is %d characters long\n", word, size);
     return size;
 }
 
 void writeWord(char *word, int x0, int y0) {
     int size = getStringSize(word);
-    printf("writing word at %d, %d\n", x0, y0);
+    // printf("writing word at %d, %d\n", x0, y0);
     for (int i = 0; i < size; i++) {
         writeCharacter(word[i], i + x0, y0);
     }
@@ -252,7 +258,7 @@ void plotPixel(int x, int y, short int line_color) {
 }
 
 void clearScreen() {  // loops through each pixel and sets to black
-    printf("started clearing screen\n");
+    // printf("started clearing screen\n");
     for (int x = 0; x < 320; x++) {
         for (int y = 0; y < 240; y++) {
             plotPixel(x, y, 0x0);  // 0xFFFFFF
@@ -267,13 +273,13 @@ int calculateCenterText_X(char str[]) {
     return (SCREEN_WIDTH_CHARS - size) / 2;
 }
 int calculateCenterText_Y(char str[]) {
-    int size = getStringSize(str);
+    // int size = getStringSize(str);
     return SCREEN_HEIGHT_CHARS / 2;
 }
 
 void drawStartScreen() {  // clears screen then draws title text
     char str[] = "HEARDLE";
-    writeWord(&str, 20, 40);
+    writeWord(str, 20, 40);
 }
 
 void drawEndScreen() {
@@ -296,7 +302,7 @@ void drawEndScreen() {
     } else {  // horrible
         strcpy(str, "dude, you suck at this...");
     }
-    writeWord(&str, calculateCenterText_X(&str), calculateCenterText_Y(&str));
+    writeWord(str, calculateCenterText_X(str), calculateCenterText_Y(str));
     writeRoundAndScore(1);
 }
 
@@ -344,17 +350,17 @@ void writeRoundAndScore(bool endScreen) {
     if (!endScreen) {  // normal
         // display score
         char PlayerScoreStr[10];
-        sprintf(&PlayerScoreStr, "%d", PlayerScore);
+        sprintf(PlayerScoreStr, "%d", PlayerScore);
         char score_label_str[] = "Score: ";
         writeWord(score_label_str, 1, 2);
         writeWord(PlayerScoreStr, 8, 2);
     } else {  // end screen, move score
         // display score
         char PlayerScoreStr[10];
-        sprintf(&PlayerScoreStr, "%d", PlayerScore);
-        char score_label_str[] = "Score: ";
-        writeWord(score_label_str, calculateCenterText_X(&score_label_str) - 3, 2);
-        writeWord(PlayerScoreStr, calculateCenterText_X(&score_label_str) + 4, 2);
+        sprintf(PlayerScoreStr, "%d", PlayerScore);
+        char score_label_str[] = "Final Score: ";
+        writeWord(score_label_str, calculateCenterText_X(score_label_str) - 4, 10);
+        writeWord(PlayerScoreStr, calculateCenterText_X(score_label_str) + getStringSize(score_label_str), 10);
     }
 }
 
@@ -376,15 +382,15 @@ void pollKeyboard() {
         if ((keyboard_keys.key == KEY_W && keyboard_keys.last_last_key == KEY_NULL)) {  // IF W IS PRESSED (decrease current round difficulty)
             if (RoundDifficulty < 5) RoundDifficulty++;
             // else do nothing
-            printf("Round Difficulty: %d\n", RoundDifficulty);
+            // printf("Round Difficulty: %d\n", RoundDifficulty);
         } else if (keyboard_keys.key == KEY_ENTER && keyboard_keys.last_last_key == KEY_NULL) {  // IF ENTER IS PRESSED (submit answer / next round)
             submitAnswer(0, 0);
-            printf("New Score: %d\n", PlayerScore);
+            // printf("New Score: %d\n", PlayerScore);
 
             writeRoundAndScore(0);
         }
 
-        printf("Keys: %x, %x, %x\n", keyboard_keys.key, keyboard_keys.last_key, keyboard_keys.last_last_key);
+        // printf("Keys: %x, %x, %x\n", keyboard_keys.key, keyboard_keys.last_key, keyboard_keys.last_last_key);
     }
 }
 
