@@ -328,19 +328,19 @@ bool checkAnswer(char answer[MAX_SONG_LENGTH]) {             // temp, will retur
 }
 
 bool submitAnswer(int answer_index) {  // returns true if answer is right, false if answer is wrong, resets roundDifficulty to 1
-    int prev_round_difficulty = RoundDifficulty;
-    RoundDifficulty = 1;
-    SelectedAnswer = -1;                              // reset selected answer to avoid keeping selection through rounds
-    if (Round >= TOTAL_ROUNDS) doneGame = true;       // done game if that was final round
-    else Round++;                                     // add one to round
-    if (checkAnswer(currentAnswers[answer_index])) {  // REPLACE ARG
-        if (!doneGame) loadCurrentAnswers();
-        PlayerScore += 10 - 2 * (prev_round_difficulty - 1);
-        return true;
-    } else {
-        if (!doneGame) loadCurrentAnswers();
-        return false;
+    bool correct = checkAnswer(currentAnswers[answer_index]);
+    if (correct) {
+        PlayerScore += 10 - 2 * (RoundDifficulty - 1);
     }
+    RoundDifficulty = 1;
+    SelectedAnswer = -1;
+    if (Round >= TOTAL_ROUNDS) {
+        doneGame = true;
+    } else {
+        Round++;
+        loadCurrentAnswers();
+    }
+    return correct;
 }
 /*
 
@@ -377,6 +377,9 @@ void writeRoundAndScore(bool endScreen) {
     }
 }
 
+void writeSelectedSymbols(int x, int y) {
+}
+
 void writeAnswersAndSelected() {
     // clear prev
     for (int i = 0; i < 80; i++) {
@@ -385,6 +388,7 @@ void writeAnswersAndSelected() {
     for (int i = 0; i < 80; i++) {
         writeCharacter(' ', i, ANSWERS_ROW_2);
     }
+
     // write 1
     writeWord(currentAnswers[0], ANSWERS_COL_1, ANSWERS_ROW_1);
     // write 2
@@ -393,6 +397,22 @@ void writeAnswersAndSelected() {
     writeWord(currentAnswers[2], ANSWERS_COL_1, ANSWERS_ROW_2);
     // write 4
     writeWord(currentAnswers[3], ANSWERS_COL_2, ANSWERS_ROW_2);
+
+    char label[3];
+    // write label 1
+    strcpy(label, "[1]");
+    writeWord(label, ANSWERS_COL_1 - 4, ANSWERS_ROW_1);
+    // write label 2
+    strcpy(label, "[2]");
+    writeWord(label, ANSWERS_COL_2 - 4, ANSWERS_ROW_1);
+    // write label 3
+    strcpy(label, "[3]");
+    writeWord(label, ANSWERS_COL_1 - 4, ANSWERS_ROW_2);
+    // write label 4
+    strcpy(label, "[4]");
+    writeWord(label, ANSWERS_COL_2 - 4, ANSWERS_ROW_2);
+
+    // highlight selected
 }
 
 void pollKeyboard() {
