@@ -22,6 +22,11 @@ short int Buffer2[240][512];
 #define SCREEN_WIDTH_CHARS 80
 #define SCREEN_HEIGHT_CHARS 60
 
+#define ANSWERS_COL_1 10  // x coord 1
+#define ANSWERS_COL_2 50  // x coord 2
+#define ANSWERS_ROW_1 40  // y coord 1
+#define ANSWERS_ROW_2 50  // y coord 2
+
 #define TOTAL_ROUNDS 5  // total number of rounds
 #define MAX_SONG_LENGTH 40
 
@@ -163,6 +168,7 @@ int main(void) {
     clearCharacterBuffer();
     writeRoundAndScore(0);
     loadCurrentAnswers();
+    writeAnswersAndSelected();
     while (!doneGame) {  // while game is going on
         pollKeyboard();
 
@@ -371,6 +377,24 @@ void writeRoundAndScore(bool endScreen) {
     }
 }
 
+void writeAnswersAndSelected() {
+    // clear prev
+    for (int i = 0; i < 80; i++) {
+        writeCharacter(' ', i, ANSWERS_ROW_1);
+    }
+    for (int i = 0; i < 80; i++) {
+        writeCharacter(' ', i, ANSWERS_ROW_2);
+    }
+    // write 1
+    writeWord(currentAnswers[0], ANSWERS_COL_1, ANSWERS_ROW_1);
+    // write 2
+    writeWord(currentAnswers[1], ANSWERS_COL_2, ANSWERS_ROW_1);
+    // write 3
+    writeWord(currentAnswers[2], ANSWERS_COL_1, ANSWERS_ROW_2);
+    // write 4
+    writeWord(currentAnswers[3], ANSWERS_COL_2, ANSWERS_ROW_2);
+}
+
 void pollKeyboard() {
     volatile int *PS2_ptr = (int *)PS2_BASE;
     int PS2_data = *(PS2_ptr);  // get value of PS2 data register
@@ -386,23 +410,28 @@ void pollKeyboard() {
         if (isValidKey(temp_key)) keyboard_keys.key = temp_key;
         else keyboard_keys.key = KEY_NOT_VALID;
 
-        if ((keyboard_keys.key == KEY_W && keyboard_keys.last_last_key == KEY_NULL && SelectedAnswer != -1)) {  // IF W IS PRESSED (decrease current round difficulty)
+        if ((keyboard_keys.key == KEY_W && keyboard_keys.last_last_key == KEY_NULL)) {  // IF W IS PRESSED (decrease current round difficulty)
             if (RoundDifficulty < 5) RoundDifficulty++;
             // else do nothing
             // printf("Round Difficulty: %d\n", RoundDifficulty);
-        } else if (keyboard_keys.key == KEY_ENTER && keyboard_keys.last_last_key == KEY_NULL) {  // IF ENTER IS PRESSED (submit answer / next round)
+        } else if (keyboard_keys.key == KEY_ENTER && keyboard_keys.last_last_key == KEY_NULL && SelectedAnswer != -1) {  // IF ENTER IS PRESSED (submit answer / next round)
             submitAnswer(SelectedAnswer - 1);
+            writeAnswersAndSelected();
             // printf("New Score: %d\n", PlayerScore);
 
             writeRoundAndScore(0);
         } else if (keyboard_keys.key == KEY_1 && keyboard_keys.last_last_key == KEY_NULL) {
             SelectedAnswer = 1;
+            writeAnswersAndSelected();
         } else if (keyboard_keys.key == KEY_2 && keyboard_keys.last_last_key == KEY_NULL) {
             SelectedAnswer = 2;
+            writeAnswersAndSelected();
         } else if (keyboard_keys.key == KEY_3 && keyboard_keys.last_last_key == KEY_NULL) {
             SelectedAnswer = 3;
+            writeAnswersAndSelected();
         } else if (keyboard_keys.key == KEY_4 && keyboard_keys.last_last_key == KEY_NULL) {
             SelectedAnswer = 4;
+            writeAnswersAndSelected();
         }
     }
 }
