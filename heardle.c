@@ -10,8 +10,13 @@
 
 #define PIXEL_BUFFER_BASE 0xFF203020
 
-#define TIMER_BASE 0xFF202000
-#define TIMER_DELAY 300000000 // counts to 3s for each start menu album (300 000 000)
+// timer code
+#define TIMER_BASE ((volatile int*) 0xFF202000)
+#define TIMER_STATUS (TIMER_BASE + 0)
+#define TIMER_CONTROL (TIMER_BASE + 1)
+#define TIMER_START_LOW (TIMER_BASE + 2)
+#define TIMER_START_HIGH (TIMER_BASE + 3)
+// 100 000 000 = 1s for the de1-soc board; just declare the delay in the timerSetup Function int counter_delay, etc.
 
 volatile int pixel_buffer_start; // global variable
 short int Buffer1[240][512];     // 240 rows, 512 (320 + padding) columns
@@ -164,6 +169,10 @@ void plot_image_menu(int x, int y);
 void plot_image_end(int x, int y, int type);
 void plot_album(int x, int y, int albNum);
 void erase_album(int x, int y);
+
+// timer set up functions
+void timerSetup(int);
+bool pollTimer();
 
 /*
 relevant structs
@@ -400,9 +409,7 @@ int calculateCenterText_Y(char str[])
 
 void drawStartScreen(volatile int *pixel_ctrl_ptr)
 { // clears screen then draws title text
-    int albumCount = 0;
-    int lastAlbumCount = -1; // Track last album to ensure rotation
-    volatile int *timer_base_ptr = (volatile int *)TIMER_BASE;
+    int albumNum = 1;
 
     /* set front pixel buffer to Buffer 1 */
     *(pixel_ctrl_ptr + 1) = (int)&Buffer1; // first store the address in the  back buffer
@@ -416,62 +423,28 @@ void drawStartScreen(volatile int *pixel_ctrl_ptr)
     *(pixel_ctrl_ptr + 1) = (int)&Buffer2;
     pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
     clearScreen();                              // pixel_buffer_start points to the pixel buffer
-
-    // Timer initialization
-    *timer_base_ptr = 0x0;                                     // Clear TO bit
-    *(timer_base_ptr + 1) = (int)TIMER_DELAY & 0xFFFF;         // Lower 16 bits
-    *(timer_base_ptr + 2) = (int)(TIMER_DELAY >> 16) & 0xFFFF; // Upper 16 bits
-
-    unsigned int enable = 0b0110;
-    *(timer_base_ptr + 1) = enable;
-
+    
     wait_for_vsync();
     pixel_buffer_start = *(pixel_ctrl_ptr + 1); // New back buffer
-
-    // Always draw menu in each frame
-    plot_image_menu(0, 0);
 
     while (!(keyboard_keys.key == KEY_SPACE && keyboard_keys.last_last_key == KEY_NULL))
     {
         pollKeyboard();
+        // set up timer
+        int delay_counter = 200000000; // 300 000 000 = 3s
+        timerSetup(delay_counter);
+        // pre sure this uhhh return true every delay counter.. so if its false..
+        while(!pollTimer()){
+            plot_image_menu(0, 0);
+            plot_album(130, 80, albumNum);
+        }
+
+        if(albumNum == 3){
+                albumNum = 0;
+        }
+        albumNum++;
         wait_for_vsync();
         pixel_buffer_start = *(pixel_ctrl_ptr + 1); // New back buffer
-
-        // Always draw menu in each frame
-        plot_image_menu(0, 0);
-
-        printf("breaking");
-
-        // Check timer status
-        if (*(timer_base_ptr) & 0x1) // Timeout bit set
-        {
-            // Rotate through albums with different positioning
-            switch (albumCount)
-            {
-            case 0:
-                plot_album(130, 80, 1); // Bully
-                break;
-            case 1:
-                plot_album(130, 80, 2); // Graduation
-                break;
-            case 2:
-                plot_album(130, 80, 3); // Yeezus
-                break;
-            }
-
-            // Erase previous album if different
-            if (lastAlbumCount != albumCount)
-            {
-                erase_album(130, 80); // Erase from top left
-            }
-
-            // Update album count
-            albumCount = (albumCount + 1) % 3;
-            lastAlbumCount = albumCount;
-
-            // Clear the timeout bit
-            *(timer_base_ptr) = 0;
-        }
     }
     clearScreen();
 }
@@ -861,6 +834,25 @@ void plot_image_end(int x, int y, int type)
         }
     }
 }
+
+// timer setup code
+// timer set up functions
+void timerSetup(int counter_delay){
+    *TIMER_STATUS = 0;
+    *TIMER_START_LOW = counter_delay & 0XFFFF;
+    *TIMER_START_HIGH = (counter_delay >> 16) & 0XFFFF;
+    *TIMER_CONTROL = 0b0110; // enables continuous mode and starts the timer
+}
+
+bool pollTimer(){
+    while(!(*TIMER_STATUS & 0b1)){
+        // checks the timeout bit
+        return false; // timer hasn't expired
+    }
+    *TIMER_STATUS = 0; // clears TO bit
+    return true; // indicates that the timer expired
+}
+
 int stronger_audio[40000] = {
     0x0000,
     0x0001,
