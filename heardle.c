@@ -11,7 +11,7 @@
 #define PIXEL_BUFFER_BASE 0xFF203020
 
 // timer code
-#define TIMER_BASE ((volatile int*) 0xFF202000)
+#define TIMER_BASE ((volatile int *)0xFF202000)
 #define TIMER_STATUS (TIMER_BASE + 0)
 #define TIMER_CONTROL (TIMER_BASE + 1)
 #define TIMER_START_LOW (TIMER_BASE + 2)
@@ -77,6 +77,7 @@ int numSongs = 20;
 #define KEY_NOT_VALID 0x00
 #define KEY_RIGHT_ARROW 0x74
 #define KEY_W 0x1D
+#define KEY_ESC 0x76
 
 #define HEX_3to0_BASE 0xFF200020
 #define HEX_5to4_BASE 0xFF200030
@@ -92,7 +93,9 @@ char validKeysArr[] = {
     KEY_NULL,
     KEY_ENTER,
     KEY_RIGHT_ARROW,
-    KEY_W};
+    KEY_W,
+    KEY_ESC,
+};
 int sizeOfValidKeysArr = sizeof(validKeysArr) / sizeof(validKeysArr[0]); // dynamically calculates size from array
 
 /*
@@ -109,7 +112,7 @@ char currentAnswers[4][MAX_SONG_LENGTH] = {
 };
 bool doneGame = false;
 bool gameStart = false;
-int high_scores[5] = {0}; 
+int high_scores[5] = {0};
 
 /*
 GLOBAL VARIABLES
@@ -211,61 +214,70 @@ Song_Struct Heartless = {2, "Heartless", 17920};
 
 int main(void)
 {
-    seedRandom(); // randomize answers based on time
-
-    volatile int *pixel_ctrl_ptr = (int *)PIXEL_BUFFER_BASE;
-    /* set front pixel buffer to Buffer 1 */
-    *(pixel_ctrl_ptr + 1) = (int)&Buffer1; // first store the address in the  back buffer
-    /* now, swap the front/back buffers, to set the front buffer location */
-    wait_for_vsync();
-    /* initialize a pointer to the pixel buffer, used by drawing functions */
-    pixel_buffer_start = *pixel_ctrl_ptr;
-    clearScreen(); // pixel_buffer_start points to the pixel buffer
-
-    /* set back pixel buffer to Buffer 2 */
-    *(pixel_ctrl_ptr + 1) = (int)&Buffer2;
-    pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
-    clearScreen();                              // pixel_buffer_start points to the pixel buffer
-    clearCharacterBuffer();
-
-    /*
-    WAIT FOR USER INPUT TO PROCEED
-    */
-    while (!(keyboard_keys.key == KEY_SPACE && keyboard_keys.last_last_key == KEY_NULL))
-    {
-        pollKeyboard();
-        wait_for_vsync();
-        drawStartScreen(pixel_ctrl_ptr);
-        clearScreen();
-    }
-    clearScreen();
-    wait_for_vsync();
-    pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
-    gameStart = true;
-    clearScreen();
-    wait_for_vsync();
-    clearCharacterBuffer();
-    writeRoundAndScore(0);
-    loadCurrentAnswers();
-    writeAnswersAndSelected();
-    writeRoundDifficulty();
-    while (!doneGame)
-    { // while game is going on
-        pollKeyboard();
-
-        wait_for_vsync();
-        pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
-    }
-
-    clearCharacterBuffer();
+    // set up outer game loop;
     while (1)
     {
+        seedRandom(); // randomize answers based on time
+
+        volatile int *pixel_ctrl_ptr = (int *)PIXEL_BUFFER_BASE;
+        /* set front pixel buffer to Buffer 1 */
+        *(pixel_ctrl_ptr + 1) = (int)&Buffer1; // first store the address in the  back buffer
+        /* now, swap the front/back buffers, to set the front buffer location */
         wait_for_vsync();
-        pixel_buffer_start = *(pixel_ctrl_ptr + 1); // New back buffer
-        drawEndScreen();
+        /* initialize a pointer to the pixel buffer, used by drawing functions */
+        pixel_buffer_start = *pixel_ctrl_ptr;
+        clearScreen(); // pixel_buffer_start points to the pixel buffer
+
+        /* set back pixel buffer to Buffer 2 */
+        *(pixel_ctrl_ptr + 1) = (int)&Buffer2;
+        pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
+        clearScreen();                              // pixel_buffer_start points to the pixel buffer
+        clearCharacterBuffer();
+
+        /*
+        WAIT FOR USER INPUT TO PROCEED
+        */
+        while (!(keyboard_keys.key == KEY_SPACE && keyboard_keys.last_last_key == KEY_NULL))
+        {
+            pollKeyboard();
+            wait_for_vsync();
+            drawStartScreen(pixel_ctrl_ptr);
+            clearScreen();
+        }
+        clearScreen();
+        wait_for_vsync();
+        pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
+        gameStart = true;
+        clearScreen();
+        wait_for_vsync();
+        clearCharacterBuffer();
+        writeRoundAndScore(0);
+        loadCurrentAnswers();
+        writeAnswersAndSelected();
+        writeRoundDifficulty();
+        while (!doneGame)
+        { // while game is going on
+            pollKeyboard();
+
+            wait_for_vsync();
+            pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
+        }
+
+        clearCharacterBuffer();
+        while (!(keyboard_keys.key == KEY_ESC && keyboard_keys.last_last_key == KEY_NULL))
+        {
+            pollKeyboard();
+            wait_for_vsync();
+            pixel_buffer_start = *(pixel_ctrl_ptr + 1); // New back buffer
+            drawEndScreen();
+        }
+        printf("exited done game loop\n");
+        PlayerScore = 0;   // reset player score on exiting the end screen (game restarts, highscores preserved)
+        gameStart = false; // restart the game
+        doneGame = false;  // reset game
     }
 
-    // done game screen
+    // technically will never reach this point
     return 0;
 }
 
@@ -427,7 +439,7 @@ void drawStartScreen(volatile int *pixel_ctrl_ptr)
     *(pixel_ctrl_ptr + 1) = (int)&Buffer2;
     pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
     clearScreen();                              // pixel_buffer_start points to the pixel buffer
-    
+
     wait_for_vsync();
     pixel_buffer_start = *(pixel_ctrl_ptr + 1); // New back buffer
 
@@ -438,13 +450,15 @@ void drawStartScreen(volatile int *pixel_ctrl_ptr)
         int delay_counter = 200000000; // 300 000 000 = 3s
         timerSetup(delay_counter);
         // pre sure this uhhh return true every delay counter.. so if its false..
-        while(!pollTimer()){
+        while (!pollTimer())
+        {
             plot_image_menu(0, 0);
             plot_album(130, 80, albumNum);
         }
 
-        if(albumNum == 3){
-                albumNum = 0;
+        if (albumNum == 3)
+        {
+            albumNum = 0;
         }
         albumNum++;
         wait_for_vsync();
@@ -481,6 +495,8 @@ void drawEndScreen()
         strcpy(str, "dude, you suck at this...");
         plot_image_end(110, 160, 5);
     }
+    // update highscore
+    updateHighScore(PlayerScore);
     writeWord(str, calculateCenterText_X(str), calculateCenterText_Y(str));
     writeRoundAndScore(1);
 }
@@ -841,27 +857,33 @@ void plot_image_end(int x, int y, int type)
 
 // timer setup code
 // timer set up functions
-void timerSetup(int counter_delay){
+void timerSetup(int counter_delay)
+{
     *TIMER_STATUS = 0;
     *TIMER_START_LOW = counter_delay & 0XFFFF;
     *TIMER_START_HIGH = (counter_delay >> 16) & 0XFFFF;
     *TIMER_CONTROL = 0b0110; // enables continuous mode and starts the timer
 }
 
-bool pollTimer(){
-    while(!(*TIMER_STATUS & 0b1)){
+bool pollTimer()
+{
+    while (!(*TIMER_STATUS & 0b1))
+    {
         // checks the timeout bit
         return false; // timer hasn't expired
     }
     *TIMER_STATUS = 0; // clears TO bit
-    return true; // indicates that the timer expired
+    return true;       // indicates that the timer expired
 }
 
 // high_scores
-void updateHighScore(int highscore){
+void updateHighScore(int highscore)
+{
     // doesnt need to sort; all 0s so we just go down the list
-    for(int i = 4; i >= 0; i--){
-        if(highscore > high_scores[i]){
+    for (int i = 4; i >= 0; i--)
+    {
+        if (highscore > high_scores[i])
+        {
             high_scores[i] = highscore;
         }
     }
