@@ -109,6 +109,7 @@ char currentAnswers[4][MAX_SONG_LENGTH] = {
 };
 bool doneGame = false;
 bool gameStart = false;
+int high_scores[5] = {0}; 
 
 /*
 GLOBAL VARIABLES
@@ -173,6 +174,9 @@ void erase_album(int x, int y);
 // timer set up functions
 void timerSetup(int);
 bool pollTimer();
+
+// check highscore
+void updateHighScore(int);
 
 /*
 relevant structs
@@ -851,6 +855,16 @@ bool pollTimer(){
     }
     *TIMER_STATUS = 0; // clears TO bit
     return true; // indicates that the timer expired
+}
+
+// high_scores
+void updateHighScore(int highscore){
+    // doesnt need to sort; all 0s so we just go down the list
+    for(int i = 4; i >= 0; i--){
+        if(highscore > high_scores[i]){
+            high_scores[i] = highscore;
+        }
+    }
 }
 
 int stronger_audio[40000] = {
