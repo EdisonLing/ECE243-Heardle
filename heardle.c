@@ -10,30 +10,35 @@
 
 #define PIXEL_BUFFER_BASE 0xFF203020
 
-#define TIMER_BASE 0xFF202000
-#define TIMER_DELAY 300000000 // counts to 3s for each start menu album (300 000 000)
+// timer code
+#define TIMER_BASE ((volatile int*) 0xFF202000)
+#define TIMER_STATUS (TIMER_BASE + 0)
+#define TIMER_CONTROL (TIMER_BASE + 1)
+#define TIMER_START_LOW (TIMER_BASE + 2)
+#define TIMER_START_HIGH (TIMER_BASE + 3)
+// 100 000 000 = 1s for the de1-soc board; just declare the delay in the timerSetup Function int counter_delay, etc.
 
-volatile int pixel_buffer_start;  // global variable
-short int Buffer1[240][512];      // 240 rows, 512 (320 + padding) columns
+volatile int pixel_buffer_start; // global variable
+short int Buffer1[240][512];     // 240 rows, 512 (320 + padding) columns
 short int Buffer2[240][512];
 
-#define CHARACTER_BUFFER_BASE 0x09000000  // base for drawing characters
+#define CHARACTER_BUFFER_BASE 0x09000000 // base for drawing characters
 
-#define PS2_BASE 0xFF200100  // PS2 base address
-#define RVALID_BIT 0x8000    // RVALID bit of PS2_Data register
-#define PS2_DATA_BITS 0xFF   // data bits of PS2_Data register
+#define PS2_BASE 0xFF200100 // PS2 base address
+#define RVALID_BIT 0x8000   // RVALID bit of PS2_Data register
+#define PS2_DATA_BITS 0xFF  // data bits of PS2_Data register
 
-#define AUDIO_BASE 0xFF203040  // base for audio registers
+#define AUDIO_BASE 0xFF203040 // base for audio registers
 
 #define SCREEN_WIDTH_CHARS 80
 #define SCREEN_HEIGHT_CHARS 60
 
-#define ANSWERS_COL_1 10  // x coord 1
-#define ANSWERS_COL_2 50  // x coord 2
-#define ANSWERS_ROW_1 40  // y coord 1
-#define ANSWERS_ROW_2 50  // y coord 2
+#define ANSWERS_COL_1 10 // x coord 1
+#define ANSWERS_COL_2 50 // x coord 2
+#define ANSWERS_ROW_1 40 // y coord 1
+#define ANSWERS_ROW_2 50 // y coord 2
 
-#define TOTAL_ROUNDS 5  // total number of rounds
+#define TOTAL_ROUNDS 5 // total number of rounds
 #define MAX_SONG_LENGTH 40
 
 const char *Songs[] = {
@@ -88,15 +93,15 @@ char validKeysArr[] = {
     KEY_ENTER,
     KEY_RIGHT_ARROW,
     KEY_W};
-int sizeOfValidKeysArr = sizeof(validKeysArr) / sizeof(validKeysArr[0]);  // dynamically calculates size from array
+int sizeOfValidKeysArr = sizeof(validKeysArr) / sizeof(validKeysArr[0]); // dynamically calculates size from array
 
 /*
 GLOBAL VARIABLES
 GLOBAL VARIABLES
 GLOBAL VARIABLES
 */
-int PlayerScore = 0;      // total score
-int RoundDifficulty = 1;  // the number of seconds the music will play for, inversely proportional to amount of points gained on correct answer
+int PlayerScore = 0;     // total score
+int RoundDifficulty = 1; // the number of seconds the music will play for, inversely proportional to amount of points gained on correct answer
 int Round = 1;
 int SelectedAnswer = -1;
 char currentAnswers[4][MAX_SONG_LENGTH] = {
@@ -104,6 +109,7 @@ char currentAnswers[4][MAX_SONG_LENGTH] = {
 };
 bool doneGame = false;
 bool gameStart = false;
+int high_scores[5] = {0}; 
 
 /*
 GLOBAL VARIABLES
@@ -137,7 +143,6 @@ int SongsSamplesLen[] = {40000, 40000, 0
 
 };
 
-
 /*
 FUNCTION PROTOTYPES
 FUNCTION PROTOTYPES
@@ -169,26 +174,36 @@ void plot_image_end(int x, int y, int type);
 void plot_album(int x, int y, int albNum);
 void erase_album(int x, int y);
 
+// timer set up functions
+void timerSetup(int);
+bool pollTimer();
+
+// check highscore
+void updateHighScore(int);
+
 /*
 relevant structs
 */
 
-typedef struct {
+typedef struct
+{
     char key, last_key, last_last_key;
 } keyboard_keys_struct;
 
 keyboard_keys_struct keyboard_keys = {KEY_NULL, KEY_NULL, KEY_NULL};
-typedef struct {
-    volatile unsigned int control;    // control/status register
-    volatile unsigned char RARC;      // 8 bit RARC register
-    volatile unsigned char RALC;      // 8 bit RALC register
-    volatile unsigned char WDRC;      // 8 bit WSRC register
-    volatile unsigned char WSLC;      // 8 bit WSLC register
-    volatile unsigned int LEFTDATA;   // 32 bit left data register
-    volatile unsigned int RIGHTDATA;  // 32 bit right data register
+typedef struct
+{
+    volatile unsigned int control;   // control/status register
+    volatile unsigned char RARC;     // 8 bit RARC register
+    volatile unsigned char RALC;     // 8 bit RALC register
+    volatile unsigned char WDRC;     // 8 bit WSRC register
+    volatile unsigned char WSLC;     // 8 bit WSLC register
+    volatile unsigned int LEFTDATA;  // 32 bit left data register
+    volatile unsigned int RIGHTDATA; // 32 bit right data register
 } audio_t;
 
-typedef struct {
+typedef struct
+{
     int index;
     char name[40];
     int length;
@@ -197,28 +212,30 @@ Song_Struct Stronger = {0, "Stronger", 17309};
 Song_Struct Power = {1, "Power", 16874};
 Song_Struct Heartless = {2, "Heartless", 17920};
 
-int main(void) {
-    seedRandom();  // randomize answers based on time
+int main(void)
+{
+    seedRandom(); // randomize answers based on time
 
     volatile int *pixel_ctrl_ptr = (int *)PIXEL_BUFFER_BASE;
     /* set front pixel buffer to Buffer 1 */
-    *(pixel_ctrl_ptr + 1) = (int)&Buffer1;  // first store the address in the  back buffer
+    *(pixel_ctrl_ptr + 1) = (int)&Buffer1; // first store the address in the  back buffer
     /* now, swap the front/back buffers, to set the front buffer location */
     wait_for_vsync();
     /* initialize a pointer to the pixel buffer, used by drawing functions */
     pixel_buffer_start = *pixel_ctrl_ptr;
-    clearScreen();  // pixel_buffer_start points to the pixel buffer
+    clearScreen(); // pixel_buffer_start points to the pixel buffer
 
     /* set back pixel buffer to Buffer 2 */
     *(pixel_ctrl_ptr + 1) = (int)&Buffer2;
-    pixel_buffer_start = *(pixel_ctrl_ptr + 1);  // we draw on the back buffer
-    clearScreen();                               // pixel_buffer_start points to the pixel buffer
+    pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
+    clearScreen();                              // pixel_buffer_start points to the pixel buffer
     clearCharacterBuffer();
-    
+
     /*
     WAIT FOR USER INPUT TO PROCEED
     */
-    while (!(keyboard_keys.key == KEY_SPACE && keyboard_keys.last_last_key == KEY_NULL)) {
+    while (!(keyboard_keys.key == KEY_SPACE && keyboard_keys.last_last_key == KEY_NULL))
+    {
         pollKeyboard();
         wait_for_vsync();
         drawStartScreen(pixel_ctrl_ptr);
@@ -226,7 +243,7 @@ int main(void) {
     }
     clearScreen();
     wait_for_vsync();
-    pixel_buffer_start = *(pixel_ctrl_ptr + 1);  // new back buffer
+    pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
     gameStart = true;
     clearScreen();
     wait_for_vsync();
@@ -235,29 +252,35 @@ int main(void) {
     loadCurrentAnswers();
     writeAnswersAndSelected();
     writeRoundDifficulty();
-    while (!doneGame) {  // while game is going on
+    while (!doneGame)
+    { // while game is going on
         pollKeyboard();
 
         wait_for_vsync();
-        pixel_buffer_start = *(pixel_ctrl_ptr + 1);  // new back buffer
+        pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
     }
 
     clearCharacterBuffer();
-    drawEndScreen();
-    while (1) {
+    while (1)
+    {
+        wait_for_vsync();
+        pixel_buffer_start = *(pixel_ctrl_ptr + 1); // New back buffer
+        drawEndScreen();
     }
 
     // done game screen
     return 0;
 }
 
-void playAudio(const int *samples, int length) {
+void playAudio(const int *samples, int length)
+{
     // get struct for audio I/O
     audio_t *const audio = (audio_t *)AUDIO_BASE;
     int i;
-    audio->control = 0x8;  // clear the output FIFOs
-    audio->control = 0x0;  // resume input conversion
-    for (i = 0; i < length; i++) {
+    audio->control = 0x8; // clear the output FIFOs
+    audio->control = 0x0; // resume input conversion
+    for (i = 0; i < length; i++)
+    {
         // wait till there is space in the output FIFO
         while (audio->WDRC == 0 || audio->WSLC == 0);
         audio->LEFTDATA = samples[i] /*<< 16*/;
@@ -266,12 +289,15 @@ void playAudio(const int *samples, int length) {
 }
 
 // seed the RNG
-void seedRandom() {
+void seedRandom()
+{
     srand(time(NULL));
 }
 // return random number in range inclusive
-int randomInRange(int min, int max) {
-    if (min > max) {
+int randomInRange(int min, int max)
+{
+    if (min > max)
+    {
         // Swap if min > max
         int temp = min;
         min = max;
@@ -281,27 +307,35 @@ int randomInRange(int min, int max) {
     printf("%d",result);
     return result;
 }
-void loadCurrentAnswers() {  // take current correct answer from index of round, and take 3 random songs from after the index
+void loadCurrentAnswers()
+{ // take current correct answer from index of round, and take 3 random songs from after the index
     int a = 0, b = 0, c = 0, d = 0;
     int temp;
-    for (int i = 0; i < 4; i++) {
-        temp = randomInRange(Round, numSongs - 1);  // index between item after right answer and end of song array
-        while (temp == a || temp == b || temp == c || temp == d) {
+    for (int i = 0; i < 4; i++)
+    {
+        temp = randomInRange(Round, numSongs - 1); // index between item after right answer and end of song array
+        while (temp == a || temp == b || temp == c || temp == d)
+        {
             temp = randomInRange(Round, numSongs - 1);
         }
         // there is 100% a better way to do this function
-        if (i == 0) a = temp;
-        else if (i == 1) b = temp;
-        else if (i == 2) c = temp;
-        else if (i == 3) d = temp;
-        strcpy(currentAnswers[i], Songs[temp]);  // COPY "RANDOM" SONG INTO CURRENT ANSWERS
+        if (i == 0)
+            a = temp;
+        else if (i == 1)
+            b = temp;
+        else if (i == 2)
+            c = temp;
+        else if (i == 3)
+            d = temp;
+        strcpy(currentAnswers[i], Songs[temp]); // COPY "RANDOM" SONG INTO CURRENT ANSWERS
     }
     int i = randomInRange(0, 3);
     strcpy(currentAnswers[i], Songs[Round - 1]);
-    //printf("Answers: %s, %s, %s, %s\n", currentAnswers[0], currentAnswers[1], currentAnswers[2], currentAnswers[3]);
+    // printf("Answers: %s, %s, %s, %s\n", currentAnswers[0], currentAnswers[1], currentAnswers[2], currentAnswers[3]);
 }
 
-void writeCharacter(char character, int x, int y) {
+void writeCharacter(char character, int x, int y)
+{
     // pointer to character buffer
     volatile char *char_buffer = (char *)CHARACTER_BUFFER_BASE;
 
@@ -313,32 +347,40 @@ void writeCharacter(char character, int x, int y) {
     return;
 }
 
-int getStringSize(char *word) {
+int getStringSize(char *word)
+{
     int size = 0;
-    while (word[size] != '\0') {
+    while (word[size] != '\0')
+    {
         size++;
     }
     // printf("'%s' is %d characters long\n", word, size);
     return size;
 }
 
-void writeWord(char *word, int x0, int y0) {
+void writeWord(char *word, int x0, int y0)
+{
     int size = getStringSize(word);
     // printf("writing word at %d, %d\n", x0, y0);
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++)
+    {
         writeCharacter(word[i], i + x0, y0);
     }
 }
 
-void clearCharacterBuffer() {
-    for (int x = 0; x < 80; x++) {
-        for (int y = 0; y < 60; y++) {
+void clearCharacterBuffer()
+{
+    for (int x = 0; x < 80; x++)
+    {
+        for (int y = 0; y < 60; y++)
+        {
             writeCharacter(' ', x, y);
         }
     }
 }
 
-void plotPixel(int x, int y, short int line_color) {
+void plotPixel(int x, int y, short int line_color)
+{
     // Make sure we're within bounds
     if (x < 0 || x >= 320 || y < 0 || y >= 240)
         return;
@@ -348,146 +390,137 @@ void plotPixel(int x, int y, short int line_color) {
     *one_pixel_address = line_color;
 }
 
-void clearScreen() {  // loops through each pixel and sets to black
+void clearScreen()
+{ // loops through each pixel and sets to black
     // printf("started clearing screen\n");
-    for (int x = 0; x < 320; x++) {
-        for (int y = 0; y < 240; y++) {
-            plotPixel(x, y, 0x0);  // 0xFFFFFF
+    for (int x = 0; x < 320; x++)
+    {
+        for (int y = 0; y < 240; y++)
+        {
+            plotPixel(x, y, 0x0); // 0xFFFFFF
         }
     }
 }
 
 // WIP
 // helpers to find x and y coords to center text
-int calculateCenterText_X(char str[]) {
+int calculateCenterText_X(char str[])
+{
     int size = getStringSize(str);
     return (SCREEN_WIDTH_CHARS - size) / 2;
 }
-int calculateCenterText_Y(char str[]) {
+int calculateCenterText_Y(char str[])
+{
     // int size = getStringSize(str);
     return SCREEN_HEIGHT_CHARS / 2;
 }
 
-void drawStartScreen(volatile int *pixel_ctrl_ptr) {  // clears screen then draws title text
-    int albumCount = 0;
-    int lastAlbumCount = -1;  // Track last album to ensure rotation
-    volatile int *timer_base_ptr = (volatile int *)TIMER_BASE;
+void drawStartScreen(volatile int *pixel_ctrl_ptr)
+{ // clears screen then draws title text
+    int albumNum = 1;
 
     /* set front pixel buffer to Buffer 1 */
-    *(pixel_ctrl_ptr + 1) = (int)&Buffer1;  // first store the address in the  back buffer
+    *(pixel_ctrl_ptr + 1) = (int)&Buffer1; // first store the address in the  back buffer
     /* now, swap the front/back buffers, to set the front buffer location */
     wait_for_vsync();
     /* initialize a pointer to the pixel buffer, used by drawing functions */
     pixel_buffer_start = *pixel_ctrl_ptr;
-    clearScreen();  // pixel_buffer_start points to the pixel buffer
+    clearScreen(); // pixel_buffer_start points to the pixel buffer
 
     /* set back pixel buffer to Buffer 2 */
     *(pixel_ctrl_ptr + 1) = (int)&Buffer2;
-    pixel_buffer_start = *(pixel_ctrl_ptr + 1);  // we draw on the back buffer
-    clearScreen();                               // pixel_buffer_start points to the pixel buffer
-
-    // Timer initialization
-    *timer_base_ptr = 0x0;  // Clear TO bit
-    *(timer_base_ptr + 1) = (int)TIMER_DELAY & 0xFFFF; // Lower 16 bits
-    *(timer_base_ptr + 2) = (int)(TIMER_DELAY >> 16) & 0xFFFF; // Upper 16 bits
-
-    unsigned int enable = 0b0110;
-    *(timer_base_ptr + 1) = enable;
-
+    pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
+    clearScreen();                              // pixel_buffer_start points to the pixel buffer
+    
     wait_for_vsync();
     pixel_buffer_start = *(pixel_ctrl_ptr + 1); // New back buffer
 
-    // Always draw menu in each frame
-    plot_image_menu(0, 0);
-
-    while(!(keyboard_keys.key == KEY_SPACE && keyboard_keys.last_last_key == KEY_NULL)){
+    while (!(keyboard_keys.key == KEY_SPACE && keyboard_keys.last_last_key == KEY_NULL))
+    {
         pollKeyboard();
+        // set up timer
+        int delay_counter = 200000000; // 300 000 000 = 3s
+        timerSetup(delay_counter);
+        // pre sure this uhhh return true every delay counter.. so if its false..
+        while(!pollTimer()){
+            plot_image_menu(0, 0);
+            plot_album(130, 80, albumNum);
+        }
+
+        if(albumNum == 3){
+                albumNum = 0;
+        }
+        albumNum++;
         wait_for_vsync();
         pixel_buffer_start = *(pixel_ctrl_ptr + 1); // New back buffer
-
-        // Always draw menu in each frame
-        plot_image_menu(0, 0);
-
-        printf("breaking");
-
-        // Check timer status
-        if (*(timer_base_ptr) & 0x1)  // Timeout bit set
-        {
-            // Rotate through albums with different positioning
-            switch(albumCount) {
-                case 0:
-                    plot_album(130, 80, 1);  // Bully
-                    break;
-                case 1:
-                    plot_album(130, 80, 2);  // Graduation
-                    break;
-                case 2:
-                    plot_album(130, 80, 3);  // Yeezus
-                    break;
-            }
-
-            // Erase previous album if different
-            if (lastAlbumCount != albumCount) {
-                erase_album(130, 80);  // Erase from top left
-            }
-
-            // Update album count
-            albumCount = (albumCount + 1) % 3;
-            lastAlbumCount = albumCount;
-
-            // Clear the timeout bit
-            *(timer_base_ptr) = 0;
-        }
     }
     clearScreen();
 }
 
-void drawEndScreen() {
+void drawEndScreen()
+{
     char str[MAX_SONG_LENGTH];
-    if (PlayerScore >= 10 * TOTAL_ROUNDS) {  // perfect score
+    if (PlayerScore >= 10 * TOTAL_ROUNDS)
+    { // perfect score
         strcpy(str, "PERFECT!!!!!");
-
-    } else if (PlayerScore >= 9 * TOTAL_ROUNDS) {  // almost perfect
+    }
+    else if (PlayerScore >= 9 * TOTAL_ROUNDS)
+    { // almost perfect
         strcpy(str, "amazing job!");
-
-    } else if (PlayerScore >= 7 * TOTAL_ROUNDS) {  // good
+    }
+    else if (PlayerScore >= 7 * TOTAL_ROUNDS)
+    { // good
         strcpy(str, "you actually did pretty good");
-
-    } else if (PlayerScore >= 4 * TOTAL_ROUNDS) {  // decent
+    }
+    else if (PlayerScore >= 4 * TOTAL_ROUNDS)
+    { // decent
         strcpy(str, "at least you got some right i guess...");
-
-    } else if (PlayerScore >= 2 * TOTAL_ROUNDS) {  // bad
+    }
+    else if (PlayerScore >= 2 * TOTAL_ROUNDS)
+    { // bad
         strcpy(str, "ermm... do you even listen to music?");
-
-    } else {  // horrible
+    }
+    else
+    { // horrible
         strcpy(str, "dude, you suck at this...");
+        plot_image_end(110, 160, 5);
     }
     writeWord(str, calculateCenterText_X(str), calculateCenterText_Y(str));
     writeRoundAndScore(1);
 }
 
-bool isValidKey(char key) {
-    for (int i = 0; i < sizeOfValidKeysArr; i++) {
-        if (key == validKeysArr[i]) return true;
+bool isValidKey(char key)
+{
+    for (int i = 0; i < sizeOfValidKeysArr; i++)
+    {
+        if (key == validKeysArr[i])
+            return true;
     }
     return false;
 }
 
-bool checkAnswer(char answer[MAX_SONG_LENGTH]) {             // temp, will return whether or not user's answer is correct
-    if (strcmp(answer, Songs[Round - 1]) == 0) return true;  // if argument is same as round's answer, return true
+bool checkAnswer(char answer[MAX_SONG_LENGTH])
+{ // temp, will return whether or not user's answer is correct
+    if (strcmp(answer, Songs[Round - 1]) == 0)
+        return true; // if argument is same as round's answer, return true
     return false;
 }
 
-bool submitAnswer(int answer_index) {  // returns true if answer is right, false if answer is wrong, resets roundDifficulty to 1
+bool submitAnswer(int answer_index)
+{ // returns true if answer is right, false if answer is wrong, resets roundDifficulty to 1
     bool correct = checkAnswer(currentAnswers[answer_index]);
-    if (correct) {
+    if (correct)
+    {
         PlayerScore += 10 - 2 * (RoundDifficulty - 1);
     }
     RoundDifficulty = 1;
     SelectedAnswer = -1;
-    if (Round >= TOTAL_ROUNDS) {
+    if (Round >= TOTAL_ROUNDS)
+    {
         doneGame = true;
-    } else {
+    }
+    else
+    {
         Round++;
         loadCurrentAnswers();
     }
@@ -500,27 +533,34 @@ pollKeyboard checks for PS2 keyboard input:
     if enter, call submitAnswer -> needs parameter change
 */
 
-void writeRoundDifficulty(){
+void writeRoundDifficulty()
+{
     char difficultyBar[60];
-    if(RoundDifficulty == 1){
-        strcpy(difficultyBar,"[<<<<<][-----][-----][-----][-----]");
+    if (RoundDifficulty == 1)
+    {
+        strcpy(difficultyBar, "[<<<<<][-----][-----][-----][-----]");
     }
-    else if(RoundDifficulty == 2){
+    else if (RoundDifficulty == 2)
+    {
         strcpy(difficultyBar, "[<<<<<][<<<<<][-----][-----][-----]");
     }
-    else if(RoundDifficulty == 3){
+    else if (RoundDifficulty == 3)
+    {
         strcpy(difficultyBar, "[<<<<<][<<<<<][<<<<<][-----][-----]");
     }
-    else if(RoundDifficulty == 4){
+    else if (RoundDifficulty == 4)
+    {
         strcpy(difficultyBar, "[<<<<<][<<<<<][<<<<<][<<<<<][-----]");
     }
-    else{
+    else
+    {
         strcpy(difficultyBar, "[<<<<<][<<<<<][<<<<<][<<<<<][<<<<<]");
     }
     writeWord(difficultyBar, calculateCenterText_X(difficultyBar), (ANSWERS_ROW_1 - 5));
 }
 
-void writeRoundAndScore(bool endScreen) {
+void writeRoundAndScore(bool endScreen)
+{
     // display round number
     char CurrentRoundStr[20];
     strcpy(CurrentRoundStr, "Round: ");
@@ -530,16 +570,21 @@ void writeRoundAndScore(bool endScreen) {
     strcpy(CurrentRoundStr, "/");
     writeWord(CurrentRoundStr, 10, 1);
     sprintf(CurrentRoundStr, "%d", TOTAL_ROUNDS);
-    if (TOTAL_ROUNDS < 10) writeWord(CurrentRoundStr, 12, 1);
-    else writeWord(CurrentRoundStr, 11, 1);
-    if (!endScreen) {  // normal
+    if (TOTAL_ROUNDS < 10)
+        writeWord(CurrentRoundStr, 12, 1);
+    else
+        writeWord(CurrentRoundStr, 11, 1);
+    if (!endScreen)
+    { // normal
         // display score
         char PlayerScoreStr[10];
         sprintf(PlayerScoreStr, "%d", PlayerScore);
         char score_label_str[] = "Score: ";
         writeWord(score_label_str, 1, 2);
         writeWord(PlayerScoreStr, 8, 2);
-    } else {  // end screen, move score
+    }
+    else
+    { // end screen, move score
         // display score
         char PlayerScoreStr[10];
         sprintf(PlayerScoreStr, "%d", PlayerScore);
@@ -549,7 +594,8 @@ void writeRoundAndScore(bool endScreen) {
     }
 }
 
-void clearHighlightedAnswers() {
+void clearHighlightedAnswers()
+{
     char clear[2] = "  ";
     writeWord(clear, ANSWERS_COL_1 - 6, ANSWERS_ROW_1);
     writeWord(clear, ANSWERS_COL_1 + getStringSize(currentAnswers[0]), ANSWERS_ROW_1);
@@ -564,12 +610,15 @@ void clearHighlightedAnswers() {
     writeWord(clear, ANSWERS_COL_2 + getStringSize(currentAnswers[3]), ANSWERS_ROW_2);
 }
 
-void writeAnswersAndSelected() {
+void writeAnswersAndSelected()
+{
     // clear prev
-    for (int i = 0; i < 80; i++) {
+    for (int i = 0; i < 80; i++)
+    {
         writeCharacter(' ', i, ANSWERS_ROW_1);
     }
-    for (int i = 0; i < 80; i++) {
+    for (int i = 0; i < 80; i++)
+    {
         writeCharacter(' ', i, ANSWERS_ROW_2);
     }
 
@@ -599,80 +648,108 @@ void writeAnswersAndSelected() {
     // highlight selected
     char highlight_front[3] = "<<";
     char highlight_end[3] = ">>";
-    if (SelectedAnswer == 1) {
+    if (SelectedAnswer == 1)
+    {
         writeWord(highlight_front, ANSWERS_COL_1 - 6, ANSWERS_ROW_1);
         writeWord(highlight_end, ANSWERS_COL_1 + getStringSize(currentAnswers[0]), ANSWERS_ROW_1);
-    } else if (SelectedAnswer == 2) {
+    }
+    else if (SelectedAnswer == 2)
+    {
         writeWord(highlight_front, ANSWERS_COL_2 - 6, ANSWERS_ROW_1);
         writeWord(highlight_end, ANSWERS_COL_2 + getStringSize(currentAnswers[1]), ANSWERS_ROW_1);
-    } else if (SelectedAnswer == 3) {
+    }
+    else if (SelectedAnswer == 3)
+    {
         writeWord(highlight_front, ANSWERS_COL_1 - 6, ANSWERS_ROW_2);
         writeWord(highlight_end, ANSWERS_COL_1 + getStringSize(currentAnswers[2]), ANSWERS_ROW_2);
-    } else if (SelectedAnswer == 4) {
+    }
+    else if (SelectedAnswer == 4)
+    {
         writeWord(highlight_front, ANSWERS_COL_2 - 6, ANSWERS_ROW_2);
         writeWord(highlight_end, ANSWERS_COL_2 + getStringSize(currentAnswers[3]), ANSWERS_ROW_2);
     }
 }
 
-void pollKeyboard() {
+void pollKeyboard()
+{
     volatile int *PS2_ptr = (int *)PS2_BASE;
-    int PS2_data = *(PS2_ptr);  // get value of PS2 data register
+    int PS2_data = *(PS2_ptr); // get value of PS2 data register
     // printf("%d\n", PS2_data);
-    int RVALID = PS2_data & RVALID_BIT;  // get only the RVALID bit
-    if (RVALID != 0) {
+    int RVALID = PS2_data & RVALID_BIT; // get only the RVALID bit
+    if (RVALID != 0)
+    {
         // shift values queue back and add newest keypress to front
         keyboard_keys.last_last_key = keyboard_keys.last_key;
         keyboard_keys.last_key = keyboard_keys.key;
         char temp_key = PS2_data & PS2_DATA_BITS;
         // if key is valid, add to structure, if not add "not valid" character instead
         // printf("%x\n", temp_key);
-        if (isValidKey(temp_key)) keyboard_keys.key = temp_key;
-        else keyboard_keys.key = KEY_NOT_VALID;
+        if (isValidKey(temp_key))
+            keyboard_keys.key = temp_key;
+        else
+            keyboard_keys.key = KEY_NOT_VALID;
 
-        if ((keyboard_keys.key == KEY_W && keyboard_keys.last_last_key == KEY_NULL)) {  // IF W IS PRESSED (decrease current round difficulty)
-            if (RoundDifficulty < 5) RoundDifficulty++;
+        if ((keyboard_keys.key == KEY_W && keyboard_keys.last_last_key == KEY_NULL))
+        { // IF W IS PRESSED (decrease current round difficulty)
+            if (RoundDifficulty < 5)
+                RoundDifficulty++;
             writeRoundDifficulty();
             // else do nothing
             // printf("Round Difficulty: %d\n", RoundDifficulty);
-        }else if(keyboard_keys.key == KEY_SPACE && keyboard_keys.last_last_key == KEY_NULL && gameStart && !doneGame){
+        }
+        else if (keyboard_keys.key == KEY_SPACE && keyboard_keys.last_last_key == KEY_NULL && gameStart && !doneGame)
+        {
             playAudio(SongsSamples[Round - 1], SongsSamplesLen[Round - 1] * RoundDifficulty / 5);
-        } 
-        else if (keyboard_keys.key == KEY_ENTER && keyboard_keys.last_last_key == KEY_NULL && SelectedAnswer != -1) {  // IF ENTER IS PRESSED (submit answer / next round)
+        }
+        else if (keyboard_keys.key == KEY_ENTER && keyboard_keys.last_last_key == KEY_NULL && SelectedAnswer != -1)
+        { // IF ENTER IS PRESSED (submit answer / next round)
             submitAnswer(SelectedAnswer - 1);
             writeAnswersAndSelected();
             writeRoundDifficulty();
             // printf("New Score: %d\n", PlayerScore);
 
             writeRoundAndScore(0);
-        } else if (keyboard_keys.key == KEY_1 && keyboard_keys.last_last_key == KEY_NULL) {
+        }
+        else if (keyboard_keys.key == KEY_1 && keyboard_keys.last_last_key == KEY_NULL)
+        {
             SelectedAnswer = 1;
             writeAnswersAndSelected();
-        } else if (keyboard_keys.key == KEY_2 && keyboard_keys.last_last_key == KEY_NULL) {
+        }
+        else if (keyboard_keys.key == KEY_2 && keyboard_keys.last_last_key == KEY_NULL)
+        {
             SelectedAnswer = 2;
             writeAnswersAndSelected();
-        } else if (keyboard_keys.key == KEY_3 && keyboard_keys.last_last_key == KEY_NULL) {
+        }
+        else if (keyboard_keys.key == KEY_3 && keyboard_keys.last_last_key == KEY_NULL)
+        {
             SelectedAnswer = 3;
             writeAnswersAndSelected();
-        } else if (keyboard_keys.key == KEY_4 && keyboard_keys.last_last_key == KEY_NULL) {
+        }
+        else if (keyboard_keys.key == KEY_4 && keyboard_keys.last_last_key == KEY_NULL)
+        {
             SelectedAnswer = 4;
             writeAnswersAndSelected();
         }
     }
 }
 
-void swap(int *a, int *b) {
+void swap(int *a, int *b)
+{
     int temp = *a;
     *a = *b;
     *b = temp;
 }
 
-void drawLine(int x0, int y0, int x1, int y1, short int colour) {
+void drawLine(int x0, int y0, int x1, int y1, short int colour)
+{
     bool is_steep = abs(y1 - y0) > abs(x1 - x0);
-    if (is_steep) {
+    if (is_steep)
+    {
         swap(&x0, &y0);
         swap(&x1, &y1);
     }
-    if (x0 > x1) {
+    if (x0 > x1)
+    {
         swap(&x0, &x1);
         swap(&y0, &y1);
     }
@@ -683,26 +760,34 @@ void drawLine(int x0, int y0, int x1, int y1, short int colour) {
     int y = y0;
 
     int y_step;
-    if (y0 < y1) y_step = 1;
-    else y_step = -1;
+    if (y0 < y1)
+        y_step = 1;
+    else
+        y_step = -1;
 
-    for (int x = x0; x < x1; x++) {
-        if (is_steep) plotPixel(y, x, colour);
-        else plotPixel(x, y, colour);
+    for (int x = x0; x < x1; x++)
+    {
+        if (is_steep)
+            plotPixel(y, x, colour);
+        else
+            plotPixel(x, y, colour);
         error += deltay;
-        if (error > 0) {
+        if (error > 0)
+        {
             y += y_step;
             error -= deltax;
         }
     }
 }
 
-void wait_for_vsync() {
-    volatile int *fbuf = (int *)0xFF203020;  // base of VGA controller
+void wait_for_vsync()
+{
+    volatile int *fbuf = (int *)0xFF203020; // base of VGA controller
     int status;
-    *fbuf = 1;             // enable swap
-    status = *(fbuf + 3);  // read status register
-    while (status & 1) {   // wait until we poll status = 0
+    *fbuf = 1;            // enable swap
+    status = *(fbuf + 3); // read status register
+    while (status & 1)
+    { // wait until we poll status = 0
         status = *(fbuf + 3);
     }
 }
@@ -719,28 +804,41 @@ void plot_image_menu(int x, int y)
     }
 }
 
-void plot_album(int x, int y, int albNum) {
-    for (int i = 0; i < 60; i++) {
-        for (int j = 0; j < 60; j++) {
-            if(albNum == 1) plotPixel(x + j, y + i, bully_px[i * 60 + j]);
-            else if(albNum == 2) plotPixel(x + j, y + i, grad_px[i * 60 + j]);
-            else if(albNum == 3) plotPixel(x + j, y + i, yeezus_px[i * 60 + j]);
+void plot_album(int x, int y, int albNum)
+{
+    for (int i = 0; i < 60; i++)
+    {
+        for (int j = 0; j < 60; j++)
+        {
+            if (albNum == 1)
+                plotPixel(x + j, y + i, bully_px[i * 60 + j]);
+            else if (albNum == 2)
+                plotPixel(x + j, y + i, grad_px[i * 60 + j]);
+            else if (albNum == 3)
+                plotPixel(x + j, y + i, yeezus_px[i * 60 + j]);
         }
     }
 }
 
-void erase_album(int x, int y) {
-    for (int i = 0; i < 60; i++) {
-        for (int j = 0; j < 60; j++) {
+void erase_album(int x, int y)
+{
+    for (int i = 0; i < 60; i++)
+    {
+        for (int j = 0; j < 60; j++)
+        {
             plotPixel(x + j, y + i, 0);
         }
     }
 }
 
-void plot_image_end(int x, int y, int type) {
-    for (int i = 0; i < 80; i++) {
-        for (int j = 0; j < 100; j++) {
-            if(type == 5)plotPixel(x + j, y + i, end_5[i * 100 + j]);
+void plot_image_end(int x, int y, int type)
+{
+    for (int i = 0; i < 80; i++)
+    {
+        for (int j = 0; j < 100; j++)
+        {
+            if (type == 5)
+                plotPixel(x + j, y + i, end_5[i * 100 + j]);
         }
     }
 }
