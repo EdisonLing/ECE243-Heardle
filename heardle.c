@@ -258,7 +258,6 @@ int main(void)
         while (!doneGame)
         { // while game is going on
             pollKeyboard();
-
             wait_for_vsync();
             pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
         }
@@ -272,6 +271,9 @@ int main(void)
             drawEndScreen();
         }
         printf("exited done game loop\n");
+        RoundDifficulty = 1; // just hard reset everything idk
+        Round = 1;
+        SelectedAnswer = -1;
         PlayerScore = 0;   // reset player score on exiting the end screen (game restarts, highscores preserved)
         gameStart = false; // restart the game
         doneGame = false;  // reset game
