@@ -227,9 +227,9 @@ Song_Struct Heartless = {2, "Heartless", 17920};
 
 int main(void)
 {
+    seedRandom(); // randomize answers based on time
     while (1)
     {
-        seedRandom(); // randomize answers based on time
 
         volatile int *pixel_ctrl_ptr = (int *)PIXEL_BUFFER_BASE;
         /* set front pixel buffer to Buffer 1 */
@@ -330,31 +330,40 @@ int randomInRange(int min, int max)
     printf("%d", result);
     return result;
 }
+
 void loadCurrentAnswers()
-{ // take current correct answer from index of round, and take 3 random songs from after the index
-    int a = 0, b = 0, c = 0, d = 0;
-    int temp;
-    for (int i = 0; i < 4; i++)
+{
+    int indices[numSongs - 1]; // Holds potential incorrect answers
+    int count = 0;
+
+    // Fill array with all song indices EXCEPT the correct one (Round - 1)
+    for (int i = 0; i < numSongs; i++)
     {
-        temp = randomInRange(Round, numSongs - 1); // index between item after right answer and end of song array
-        while (temp == a || temp == b || temp == c || temp == d)
-        {
-            temp = randomInRange(Round, numSongs - 1);
-        }
-        // there is 100% a better way to do this function
-        if (i == 0)
-            a = temp;
-        else if (i == 1)
-            b = temp;
-        else if (i == 2)
-            c = temp;
-        else if (i == 3)
-            d = temp;
-        strcpy(currentAnswers[i], Songs[temp]); // COPY "RANDOM" SONG INTO CURRENT ANSWERS
+        if (i != (Round - 1)) // Skip the correct answer
+            indices[count++] = i;
     }
-    int i = randomInRange(0, 3);
-    strcpy(currentAnswers[i], Songs[Round - 1]);
-    // printf("Answers: %s, %s, %s, %s\n", currentAnswers[0], currentAnswers[1], currentAnswers[2], currentAnswers[3]);
+
+    // Shuffle the indices using Fisher-Yates
+    for (int i = count - 1; i > 0; i--)
+    {
+        int j = randomInRange(0, i);
+        int temp = indices[i];
+        indices[i] = indices[j];
+        indices[j] = temp;
+    }
+
+    // Assign 3 incorrect answers
+    for (int i = 0; i < 3; i++)
+        strcpy(currentAnswers[i], Songs[indices[i]]);
+
+    // Insert correct answer at a random position
+    int correctIndex = randomInRange(0, 3);
+    
+    // Shift last assigned incorrect answer to an open slot
+    strcpy(currentAnswers[3], Songs[indices[3]]);  
+
+    // Place correct answer in its designated spot
+    strcpy(currentAnswers[correctIndex], Songs[Round - 1]);
 }
 
 void writeCharacter(char character, int x, int y)
