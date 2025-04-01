@@ -452,12 +452,6 @@ void drawStartScreen(volatile int *pixel_ctrl_ptr)
         int delay_counter = 200000000; // 300 000 000 = 3s
         timerSetup(delay_counter);
         // pre sure this uhhh return true every delay counter.. so if its false..
-        while (!pollTimer())
-        {
-            plot_image_menu(0, 0);
-            plot_album(130, 80, albumNum);
-        }
-
         if (albumNum == 3)
         {
             albumNum = 0;
@@ -465,6 +459,12 @@ void drawStartScreen(volatile int *pixel_ctrl_ptr)
         albumNum++;
         wait_for_vsync();
         pixel_buffer_start = *(pixel_ctrl_ptr + 1); // New back buffer
+        while (!(keyboard_keys.key == KEY_SPACE && keyboard_keys.last_last_key == KEY_NULL) && !pollTimer())
+        {
+            pollKeyboard();
+            plot_image_menu(0, 0);
+            plot_album(130, 80, albumNum);
+        }
     }
     clearScreen();
 }
