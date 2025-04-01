@@ -138,10 +138,10 @@ int power_audio_len = 0;
 int heartless_audio[] = {};
 int heartless_audio_len = 0;
 
-int *SongsSamples[] = {devil_in_a_new_dress_audio, beauty_and_the_beast_audio, heartless_audio
+int *SongsSamples[] = {devil_in_a_new_dress_audio, beauty_and_the_beast_audio, heartless_audio, power_audio, power_audio
 
 };
-int SongsSamplesLen[] = {40000, 40000, 0
+int SongsSamplesLen[] = {40000, 40000, 0, 0, 0
 
 };
 
