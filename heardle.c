@@ -441,18 +441,24 @@ void loadCurrentAnswers()
         indices[j] = temp;
     }
 
-    // Assign 3 incorrect answers
-    for (int i = 0; i < 3; i++)
-        strcpy(currentAnswers[i], Songs[indices[i]]);
-
-    // Insert correct answer at a random position
+    // Choose a random position for the correct answer (0-3)
     int correctIndex = randomInRange(0, 3);
 
-    // Shift last assigned incorrect answer to an open slot
-    strcpy(currentAnswers[3], Songs[indices[3]]);
-
-    // Place correct answer in its designated spot
-    strcpy(currentAnswers[correctIndex], Songs[Round - 1]);
+    // Fill the answers array
+    int incorrectIndex = 0;
+    for (int i = 0; i < 4; i++)
+    {
+        if (i == correctIndex)
+        {
+            // Place correct answer
+            strcpy(currentAnswers[i], Songs[Round - 1]);
+        }
+        else
+        {
+            // Place incorrect answers from the shuffled indices
+            strcpy(currentAnswers[i], Songs[indices[incorrectIndex++]]);
+        }
+    }
 }
 
 void writeCharacter(char character, int x, int y)
