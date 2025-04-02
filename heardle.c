@@ -422,30 +422,37 @@ int randomInRange(int min, int max)
 
 void loadCurrentAnswers()
 {
-    int a = Round - 1; // Correct answer index
-    int b, c, d;
+    int indices[numSongs - 1]; // Holds potential incorrect answers
+    int count = 0;
 
-    // Pick 3 unique random distractors by checking for uniqueness
-    do
+    // Fill array with all song indices EXCEPT the correct one (Round - 1)
+    for (int i = 0; i < numSongs; i++)
     {
-        b = randomInRange(0, numSongs - 1);
-    } while (b == a);
+        if (i != (Round - 1)) // Skip the correct answer
+            indices[count++] = i;
+    }
 
-    do
+    // Shuffle the indices using Fisher-Yates
+    for (int i = count - 1; i > 0; i--)
     {
-        c = randomInRange(0, numSongs - 1);
-    } while (c == a || c == b);
+        int j = randomInRange(0, i);
+        int temp = indices[i];
+        indices[i] = indices[j];
+        indices[j] = temp;
+    }
 
-    do
-    {
-        d = randomInRange(0, numSongs - 1);
-    } while (d == a || d == b || d == c);
+    // Assign 3 incorrect answers
+    for (int i = 0; i < 3; i++)
+        strcpy(currentAnswers[i], Songs[indices[i]]);
 
-    // Copy the selected songs into currentAnswers
-    strcpy(currentAnswers[0], Songs[a]);
-    strcpy(currentAnswers[1], Songs[b]);
-    strcpy(currentAnswers[2], Songs[c]);
-    strcpy(currentAnswers[3], Songs[d]);
+    // Insert correct answer at a random position
+    int correctIndex = randomInRange(0, 3);
+
+    // Shift last assigned incorrect answer to an open slot
+    strcpy(currentAnswers[3], Songs[indices[3]]);
+
+    // Place correct answer in its designated spot
+    strcpy(currentAnswers[correctIndex], Songs[Round - 1]);
 }
 
 void writeCharacter(char character, int x, int y)
