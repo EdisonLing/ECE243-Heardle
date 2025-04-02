@@ -313,7 +313,7 @@ void playAudio(const int *samples, int length)
 // seed the RNG
 void seedRandom()
 {
-    srand(time(NULL) ^ clock()); // XOR time and clock to get a more random seed
+    srand(time(NULL)); // XOR time and clock to get a more random seed
 }
 // return random number in range inclusive
 int randomInRange(int min, int max)
@@ -347,11 +347,11 @@ void loadCurrentAnswers() {
         d = randomInRange(0, numSongs - 1);
     } while (d == a || d == b || d == c);
 
-    // Assign answers directly
-    currentAnswers[0] = Songs[a]; 
-    currentAnswers[1] = Songs[b]; 
-    currentAnswers[2] = Songs[c]; 
-    currentAnswers[3] = Songs[d]; 
+    // Copy the selected songs into currentAnswers
+    strcpy(currentAnswers[0], Songs[a]);
+    strcpy(currentAnswers[1], Songs[b]);
+    strcpy(currentAnswers[2], Songs[c]);
+    strcpy(currentAnswers[3], Songs[d]);
 }
 
 
