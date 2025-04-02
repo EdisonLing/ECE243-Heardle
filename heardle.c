@@ -311,7 +311,7 @@ void playAudio(const int *samples, int length)
 // seed the RNG
 void seedRandom()
 {
-    srand(time(NULL));
+    srand(time(NULL) ^ clock()); // XOR time and clock to get a more random seed
 }
 // return random number in range inclusive
 int randomInRange(int min, int max)
@@ -327,8 +327,10 @@ int randomInRange(int min, int max)
     printf("%d", result);
     return result;
 }
+
 void loadCurrentAnswers()
 {
+
     int a = Round - 1, b = -1, c = -1, d = -1; // Correct answer at index (Round - 1)
     int temp;
 
@@ -336,7 +338,7 @@ void loadCurrentAnswers()
     {
         do
         {
-            temp = randomInRange(0, numSongs - 1); // Now picks from *any* valid index
+            temp = randomInRange(0, numSongs - 1);
         } while (temp == a || temp == b || temp == c || temp == d); // Ensure uniqueness
 
         if (i == 1)
