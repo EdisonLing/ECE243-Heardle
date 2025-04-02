@@ -191,7 +191,7 @@ bool pollTimer();
 
 // check highscore
 void updateHighScore(int);
-
+void displayHighScore();
 /*
 relevant structs
 */
@@ -228,10 +228,6 @@ int main(void)
     seedRandom(); // randomize answers based on time
     while (1)
     {
-<<<<<<< HEAD
-=======
-
->>>>>>> 6cae419bc54cb7c4a21710050bea1db4d9668e80
         volatile int *pixel_ctrl_ptr = (int *)PIXEL_BUFFER_BASE;
         /* set front pixel buffer to Buffer 1 */
         *(pixel_ctrl_ptr + 1) = (int)&Buffer1; // first store the address in the  back buffer
@@ -277,12 +273,14 @@ int main(void)
         }
 
         clearCharacterBuffer();
+        updateHighScore(PlayerScore); //game ended
         while (!(keyboard_keys.key == KEY_ESC && keyboard_keys.last_last_key == KEY_NULL))
         {
             pollKeyboard();
             wait_for_vsync();
             pixel_buffer_start = *(pixel_ctrl_ptr + 1); // New back buffer
             drawEndScreen();
+            displayHighScore();
         }
         PlayerScore = 0;     // total score
         RoundDifficulty = 1; // the number of seconds the music will play for, inversely proportional to amount of points gained on correct answer
@@ -332,38 +330,30 @@ int randomInRange(int min, int max)
     return result;
 }
 
-void loadCurrentAnswers() {
+void loadCurrentAnswers() { 
+    int a = Round - 1; // Correct answer index
+    int b, c, d;
 
-    int a = Round - 1, b = -1, c = -1, d = -1; // Correct answer at index (Round - 1)
-    int temp;
+    // Pick 3 unique random distractors by checking for uniqueness
+    do {
+        b = randomInRange(0, numSongs - 1);
+    } while (b == a);
 
-    for (int i = 1; i < 4; i++) // Pick 3 unique random distractors
-    {
-        do {
-            temp = randomInRange(0, numSongs - 1);
-        } while (temp == a || temp == b || temp == c || temp == d); // Ensure uniqueness
+    do {
+        c = randomInRange(0, numSongs - 1);
+    } while (c == a || c == b);
 
-        if (i == 1) b = temp;
-        else if (i == 2) c = temp;
-        else if (i == 3) d = temp;
-    }
+    do {
+        d = randomInRange(0, numSongs - 1);
+    } while (d == a || d == b || d == c);
 
-    // Copy songs into currentAnswers
-    strcpy(currentAnswers[0], Songs[a]);
-    strcpy(currentAnswers[1], Songs[b]);
-    strcpy(currentAnswers[2], Songs[c]);
-    strcpy(currentAnswers[3], Songs[d]);
-
-    // Shuffle answers using Fisher-Yates shuffle
-    for (int i = 3; i > 0; i--) 
-    {
-        int j = randomInRange(0, i); // Pick a random index from 0 to i
-        char tempStr[100]; // Assuming song names are < 100 chars
-        strcpy(tempStr, currentAnswers[i]);
-        strcpy(currentAnswers[i], currentAnswers[j]);
-        strcpy(currentAnswers[j], tempStr);
-    }
+    // Assign answers directly
+    currentAnswers[0] = Songs[a]; 
+    currentAnswers[1] = Songs[b]; 
+    currentAnswers[2] = Songs[c]; 
+    currentAnswers[3] = Songs[d]; 
 }
+
 
 void writeCharacter(char character, int x, int y)
 {
@@ -899,15 +889,32 @@ bool pollTimer()
 }
 
 // high_scores
-void updateHighScore(int highscore)
-{
-    // doesnt need to sort; all 0s so we just go down the list
-    for (int i = 4; i >= 0; i--)
-    {
-        if (highscore > high_scores[i])
-        {
-            high_scores[i] = highscore;
+void updateHighScore(int highscore) {
+    // Find the correct position to insert the new score
+    bool find_highscore = false;
+    int i;
+    for (i = 0; i < 5; i++) {
+        if (highscore > high_scores[i]) {
+            find_highscore = true;
+            break;
         }
+    }
+
+    if(find_highscore){
+        // Shift lower scores down
+        for (int j = 4; j > i; j--) {
+            high_scores[j] = high_scores[j - 1];
+        }
+
+        // Insert new high score
+        high_scores[i] = highscore;
+    }
+}
+
+void displayHighScore(){
+    printf("High Scores:\n");
+    for (int i = 0; i < 5; ++i) {
+        printf("%d. %d\n", i + 1, high_scores[i]);
     }
 }
 
