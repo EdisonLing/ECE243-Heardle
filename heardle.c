@@ -228,6 +228,10 @@ int main(void)
     seedRandom(); // randomize answers based on time
     while (1)
     {
+<<<<<<< HEAD
+=======
+
+>>>>>>> 6cae419bc54cb7c4a21710050bea1db4d9668e80
         volatile int *pixel_ctrl_ptr = (int *)PIXEL_BUFFER_BASE;
         /* set front pixel buffer to Buffer 1 */
         *(pixel_ctrl_ptr + 1) = (int)&Buffer1; // first store the address in the  back buffer
@@ -328,25 +332,20 @@ int randomInRange(int min, int max)
     return result;
 }
 
-void loadCurrentAnswers()
-{
+void loadCurrentAnswers() {
 
     int a = Round - 1, b = -1, c = -1, d = -1; // Correct answer at index (Round - 1)
     int temp;
 
     for (int i = 1; i < 4; i++) // Pick 3 unique random distractors
     {
-        do
-        {
+        do {
             temp = randomInRange(0, numSongs - 1);
         } while (temp == a || temp == b || temp == c || temp == d); // Ensure uniqueness
 
-        if (i == 1)
-            b = temp;
-        else if (i == 2)
-            c = temp;
-        else if (i == 3)
-            d = temp;
+        if (i == 1) b = temp;
+        else if (i == 2) c = temp;
+        else if (i == 3) d = temp;
     }
 
     // Copy songs into currentAnswers
@@ -356,10 +355,10 @@ void loadCurrentAnswers()
     strcpy(currentAnswers[3], Songs[d]);
 
     // Shuffle answers using Fisher-Yates shuffle
-    for (int i = 3; i > 0; i--)
+    for (int i = 3; i > 0; i--) 
     {
         int j = randomInRange(0, i); // Pick a random index from 0 to i
-        char tempStr[100];           // Assuming song names are < 100 chars
+        char tempStr[100]; // Assuming song names are < 100 chars
         strcpy(tempStr, currentAnswers[i]);
         strcpy(currentAnswers[i], currentAnswers[j]);
         strcpy(currentAnswers[j], tempStr);
