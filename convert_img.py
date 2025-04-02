@@ -69,8 +69,8 @@ void erase_image_{img_name}(int x, int y) {{
 
 if __name__ == '__main__':
     convert_img(
-        file_name=r'end_ye.png',
-        img_name='end_5',
-        width=100,
-        height=80
+        file_name=r'albumMenu.png',
+        img_name='album_select',
+        width=320,
+        height=240
     )
