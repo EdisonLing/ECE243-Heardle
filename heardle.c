@@ -428,7 +428,6 @@ int randomInRange(int min, int max)
 
 void loadCurrentAnswers()
 {
-    if (selected_album == 0)
     int indices[numSongs - 1]; // Holds potential incorrect answers
     int count = 0;
 
@@ -1048,6 +1047,7 @@ void drawAlbumSelect(volatile int *pixel_ctrl_ptr)
         wait_for_vsync();
         pixel_buffer_start = *(pixel_ctrl_ptr + 1); // New back buffer
         clearScreen();
+        clearCharacterBuffer();
         plot_image_menu(0, 0, 2); // draw album select menu
         // 4 - donda, 5 - pablo, 6 - graduation, 7 - dropout, 8 - fantasy
         // from left to right will be album indices 0 - 4; so 0 is fantasy, 1 is pablo, 2 is grad, 3 is dropout, 4 is donda
@@ -1064,13 +1064,44 @@ void drawAlbumSelect(volatile int *pixel_ctrl_ptr)
         else if (keyboard_keys.key == KEY_S && keyboard_keys.last_last_key == KEY_NULL)
             selected_album++; // opposite
         if (selected_album < 0)
-            selected_album = 0;
-        else if (selected_album > 4)
             selected_album = 4;
+        else if (selected_album > 4)
+            selected_album = 0;
         if (keyboard_keys.key == KEY_ENTER && keyboard_keys.last_last_key == KEY_NULL)
             album_select = true;
         // sets the correct album; i guess automatically youd get the first one ubt since u alr have like a "shuffle" (our first iteration) I can add it too
         // draw each menu after this (ok lowkey this only needs to draw once,, iguess,,, but whatever)
+        
+        //write characters for album that is selected
+        char album_name_str[40];
+        int x_album;
+        int y_album;
+        if(selected_album == 0){//write fantasy
+            strcpy(album_name_str, "MBDTF");
+            x_album = (10 + 60/2)/4;
+            y_album = (80 + 60)/4 + 2;
+        }
+        else if(selected_album == 1){//write pablo
+            strcpy(album_name_str, "The Life Of Pablo");
+            x_album = (70 + 60/2)/4;
+            y_album = (180)/4 - 2;
+        }
+        else if(selected_album == 2){//write grad
+            strcpy(album_name_str, "Graduation");
+            x_album = (130 + 60/2)/4;
+            y_album = (80 + 60)/4 + 2;
+        }
+        else if(selected_album == 3){//write dropout
+            strcpy(album_name_str, "The College Dropout");
+            x_album = (190 + 60/2)/4;
+            y_album = (180)/4 - 2;
+        }
+        else{//write donda
+            strcpy(album_name_str, "Donda");
+            x_album = (250 + 60/2)/4;
+            y_album = (80 + 60)/4 + 2;
+        }
+        writeWord(album_name_str, x_album - getStringSize(album_name_str)/2, y_album);
     }
 }
 
