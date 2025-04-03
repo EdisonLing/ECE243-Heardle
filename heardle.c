@@ -1036,29 +1036,48 @@ void displayHighScore()
 // selected album is a global variable that is set to the index of the selected album cuz im lazy
 void drawAlbumSelect(volatile int *pixel_ctrl_ptr)
 {
+    wait_for_vsync();
+    pixel_buffer_start = *(pixel_ctrl_ptr + 1); // New back buffer
+    plot_image_menu(0, 0, 2);                   // draw album select menu
+    // 4 - donda, 5 - pablo, 6 - graduation, 7 - dropout, 8 - fantasy
+    // from left to right will be album indices 0 - 4; so 0 is fantasy, 1 is pablo, 2 is grad, 3 is dropout, 4 is donda
+    plot_album(10, 80, 8);
+    plot_album(70, 180, 5);
+    plot_album(130, 80, 6);
+    plot_album(190, 180, 7);
+    plot_album(250, 80, 4);
+
+    wait_for_vsync();
+    pixel_buffer_start = *(pixel_ctrl_ptr + 1); // New back buffer
+    plot_image_menu(0, 0, 2);                   // draw album select menu
+    // 4 - donda, 5 - pablo, 6 - graduation, 7 - dropout, 8 - fantasy
+    // from left to right will be album indices 0 - 4; so 0 is fantasy, 1 is pablo, 2 is grad, 3 is dropout, 4 is donda
+    plot_album(10, 80, 8);
+    plot_album(70, 180, 5);
+    plot_album(130, 80, 6);
+    plot_album(190, 180, 7);
+    plot_album(250, 80, 4);
+
+    bool selectedNewAlbum = true;
 
     while (!album_select)
     {
         pollKeyboard();
-        wait_for_vsync();
-        pixel_buffer_start = *(pixel_ctrl_ptr + 1); // New back buffer
-        clearScreen();
-        clearCharacterBuffer();
-        plot_image_menu(0, 0, 2); // draw album select menu
-        // 4 - donda, 5 - pablo, 6 - graduation, 7 - dropout, 8 - fantasy
-        // from left to right will be album indices 0 - 4; so 0 is fantasy, 1 is pablo, 2 is grad, 3 is dropout, 4 is donda
-        plot_album(10, 80, 8);
-        plot_album(70, 180, 5);
-        plot_album(130, 80, 6);
-        plot_album(190, 180, 7);
-        plot_album(250, 80, 4);
-
         // draw each album in the menu
 
         if (keyboard_keys.key == KEY_W && keyboard_keys.last_last_key == KEY_NULL)
-            selected_album--; // moving up the array so --
+        {
+            selected_album++; // moving up the array so --
+            selectedNewAlbum = true;
+            printf("pressed w\n");
+        }
+
         else if (keyboard_keys.key == KEY_S && keyboard_keys.last_last_key == KEY_NULL)
-            selected_album++; // opposite
+        {
+            selected_album--; // opposite
+            selectedNewAlbum = true;
+            printf("pressed s\n");
+        }
         if (selected_album < 0)
             selected_album = 4;
         else if (selected_album > 4)
@@ -1075,37 +1094,42 @@ void drawAlbumSelect(volatile int *pixel_ctrl_ptr)
         char album_name_str[40];
         int x_album;
         int y_album;
-        if (selected_album == 0)
+        if (selected_album == 0 && selectedNewAlbum == true)
         { // write fantasy
             strcpy(album_name_str, "MBDTF");
             x_album = (10 + 60 / 2) / 4;
             y_album = (80 + 60) / 4 + 2;
         }
-        else if (selected_album == 1)
+        else if (selected_album == 1 && selectedNewAlbum == true)
         { // write pablo
             strcpy(album_name_str, "The Life Of Pablo");
             x_album = (70 + 60 / 2) / 4;
             y_album = (180) / 4 - 2;
         }
-        else if (selected_album == 2)
+        else if (selected_album == 2 && selectedNewAlbum == true)
         { // write grad
             strcpy(album_name_str, "Graduation");
             x_album = (130 + 60 / 2) / 4;
             y_album = (80 + 60) / 4 + 2;
         }
-        else if (selected_album == 3)
+        else if (selected_album == 3 && selectedNewAlbum == true)
         { // write dropout
             strcpy(album_name_str, "The College Dropout");
             x_album = (190 + 60 / 2) / 4;
             y_album = (180) / 4 - 2;
         }
-        else
+        else if (selected_album == 4 && selectedNewAlbum == true)
         { // write donda
             strcpy(album_name_str, "Donda");
             x_album = (250 + 60 / 2) / 4;
             y_album = (80 + 60) / 4 + 2;
         }
-        writeWord(album_name_str, x_album - getStringSize(album_name_str) / 2, y_album);
+        if (selectedNewAlbum == true)
+        {
+            clearCharacterBuffer();
+            writeWord(album_name_str, x_album - getStringSize(album_name_str) / 2, y_album);
+            selectedNewAlbum = false;
+        }
     }
 }
 
