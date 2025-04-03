@@ -428,6 +428,7 @@ int randomInRange(int min, int max)
 
 void loadCurrentAnswers()
 {
+    if (selected_album == 0)
     int indices[numSongs - 1]; // Holds potential incorrect answers
     int count = 0;
 
@@ -1058,18 +1059,17 @@ void drawAlbumSelect(volatile int *pixel_ctrl_ptr)
 
         // draw each album in the menu
 
-        if (selected_album < 0)
-            selected_album = 0;
-        else if (selected_album > 4)
-            selected_album = 4;
-        else if (keyboard_keys.key == KEY_W && keyboard_keys.last_last_key == KEY_NULL)
+        if (keyboard_keys.key == KEY_W && keyboard_keys.last_last_key == KEY_NULL)
             selected_album--; // moving up the array so --
         else if (keyboard_keys.key == KEY_S && keyboard_keys.last_last_key == KEY_NULL)
             selected_album++; // opposite
         else if (keyboard_keys.key == KEY_ENTER && keyboard_keys.last_last_key == KEY_NULL)
             album_select = true;
         // sets the correct album; i guess automatically youd get the first one ubt since u alr have like a "shuffle" (our first iteration) I can add it too
-
+        else if (selected_album < 0)
+            selected_album = 0;
+        else if (selected_album > 4)
+            selected_album = 4;
         // draw each menu after this (ok lowkey this only needs to draw once,, iguess,,, but whatever)
     }
 }
