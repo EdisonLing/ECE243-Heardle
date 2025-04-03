@@ -429,6 +429,16 @@ int randomInRange(int min, int max)
 void loadCurrentAnswers()
 {
     if (selected_album == 0)
+        ;
+    else if (selected_album == 1)
+        ;
+    else if (selected_album == 2)
+        ;
+    else if (selected_album == 3)
+        ;
+    else if (selected_album == 4)
+        ;
+
     int indices[numSongs - 1]; // Holds potential incorrect answers
     int count = 0;
 
@@ -821,7 +831,7 @@ void pollKeyboard()
         {
             playAudio(SongsSamples[Round - 1], SongsSamplesLen[Round - 1] * RoundDifficulty / 5);
         }
-        else if (keyboard_keys.key == KEY_ENTER && keyboard_keys.last_last_key == KEY_NULL && SelectedAnswer != -1)
+        else if (album_select && gameStart && keyboard_keys.key == KEY_ENTER && keyboard_keys.last_last_key == KEY_NULL && SelectedAnswer != -1)
         { // IF ENTER IS PRESSED (submit answer / next round)
             submitAnswer(SelectedAnswer - 1);
             writeAnswersAndSelected();
@@ -1068,7 +1078,10 @@ void drawAlbumSelect(volatile int *pixel_ctrl_ptr)
         else if (selected_album > 4)
             selected_album = 4;
         if (keyboard_keys.key == KEY_ENTER && keyboard_keys.last_last_key == KEY_NULL)
+        {
             album_select = true;
+            break;
+        }
         // sets the correct album; i guess automatically youd get the first one ubt since u alr have like a "shuffle" (our first iteration) I can add it too
         // draw each menu after this (ok lowkey this only needs to draw once,, iguess,,, but whatever)
     }
