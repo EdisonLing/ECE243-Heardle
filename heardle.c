@@ -808,7 +808,7 @@ void pollKeyboard()
         else
             keyboard_keys.key = KEY_NOT_VALID;
 
-        if ((keyboard_keys.key == KEY_W && keyboard_keys.last_last_key == KEY_NULL))
+        if (album_select && (keyboard_keys.key == KEY_W && keyboard_keys.last_last_key == KEY_NULL))
         { // IF W IS PRESSED (decrease current round difficulty)
             if (RoundDifficulty < 5)
                 RoundDifficulty++;
