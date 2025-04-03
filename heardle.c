@@ -1063,13 +1063,13 @@ void drawAlbumSelect(volatile int *pixel_ctrl_ptr)
             selected_album--; // moving up the array so --
         else if (keyboard_keys.key == KEY_S && keyboard_keys.last_last_key == KEY_NULL)
             selected_album++; // opposite
-        else if (keyboard_keys.key == KEY_ENTER && keyboard_keys.last_last_key == KEY_NULL)
-            album_select = true;
-        // sets the correct album; i guess automatically youd get the first one ubt since u alr have like a "shuffle" (our first iteration) I can add it too
-        else if (selected_album < 0)
+        if (selected_album < 0)
             selected_album = 0;
         else if (selected_album > 4)
             selected_album = 4;
+        if (keyboard_keys.key == KEY_ENTER && keyboard_keys.last_last_key == KEY_NULL)
+            album_select = true;
+        // sets the correct album; i guess automatically youd get the first one ubt since u alr have like a "shuffle" (our first iteration) I can add it too
         // draw each menu after this (ok lowkey this only needs to draw once,, iguess,,, but whatever)
     }
 }
