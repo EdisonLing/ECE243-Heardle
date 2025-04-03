@@ -347,8 +347,8 @@ int main(void)
             clearScreen();
         }
         // init just some obscenely high timer value to seed with
-        timerSetup(20000000000); //20s
-        seedRandom(); // randomize answers based on timer value
+        timerSetup(20000000000); // 20s
+        seedRandom();            // randomize answers based on timer value
         // wait for album select
         while (!album_select)
         {
@@ -409,7 +409,7 @@ void playAudio(const int *samples, int length)
 // seed the RNG
 void seedRandom()
 {
-    srand(timerVal); 
+    srand(timerVal);
 }
 // return random number in range inclusive
 int randomInRange(int min, int max)
@@ -996,7 +996,7 @@ bool pollTimer()
     }
     *TIMER_STATUS = 0; // clears TO bit
     timerVal = 0;
-    return true;       // indicates that the timer expired
+    return true; // indicates that the timer expired
 }
 
 // high_scores
