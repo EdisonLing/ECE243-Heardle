@@ -42,26 +42,16 @@ short int Buffer2[240][512];
 #define MAX_SONG_LENGTH 40
 
 const char *Songs[] = {
-    "Devil In A New Dress",
-    "Beauty And The Beast",
-    "Bound 2",
-    "Wolves",
-    "Homecoming",
-    "All of the Lights",
-    "Runaway",
     "Runaway",
     "Black Skinhead",
-    "Famous",
-    "Ultralight Beam",
     "Ghost Town",
-    "I Wonder",
     "Can't Tell Me Nothing",
     "Touch the Sky",
     "Jesus Walks",
     "Vultures",
     "Love Lockdown",
     "Good Morning",
-    "Father Stretch My Hands Pt. 1"};
+};
 
 int numSongs = 20;
 
@@ -428,14 +418,20 @@ int randomInRange(int min, int max)
 
 void loadCurrentAnswers()
 {
-    int indices[numSongs - 1]; // Holds potential incorrect answers
+    int indices[numSongs - 1]; // Holds potential incorrect answers - we can remove this once we fix the pool of songs
     int count = 0;
 
-    // Fill array with all song indices EXCEPT the correct one (Round - 1)
+    // Get the correct song based on current album and round
+    const char *correctAnswer = albumSongs[selected_album][Round - 1];
+
+    // Fill array with all song indices EXCEPT the correct one
     for (int i = 0; i < numSongs; i++)
     {
-        if (i != (Round - 1)) // Skip the correct answer
+        // Skip if this is the correct answer (compare song names)
+        if (strcmp(Songs[i], correctAnswer) != 0)
+        {
             indices[count++] = i;
+        }
     }
 
     // Shuffle the indices using Fisher-Yates
@@ -456,12 +452,12 @@ void loadCurrentAnswers()
     {
         if (i == correctIndex)
         {
-            // Place correct answer
-            strcpy(currentAnswers[i], Songs[Round - 1]);
+            // Place correct answer from the selected album
+            strcpy(currentAnswers[i], correctAnswer);
         }
         else
         {
-            // Place incorrect answers from the shuffled indices
+            // Place incorrect answers from the shuffled indices (global Songs array)
             strcpy(currentAnswers[i], Songs[indices[incorrectIndex++]]);
         }
     }
@@ -820,7 +816,7 @@ void pollKeyboard()
         {
             playAudio(SongsSamples[Round - 1], SongsSamplesLen[Round - 1] * RoundDifficulty / 5);
         }
-        else if (album_select && gameStart && keyboard_keys.key == KEY_ENTER && keyboard_keys.last_last_key == KEY_NULL && SelectedAnswer != -1)
+        else if (keyboard_keys.key == KEY_ENTER && keyboard_keys.last_last_key == KEY_NULL && SelectedAnswer != -1)
         { // IF ENTER IS PRESSED (submit answer / next round)
             submitAnswer(SelectedAnswer - 1);
             writeAnswersAndSelected();
