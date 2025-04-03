@@ -1063,22 +1063,26 @@ void drawAlbumSelect(volatile int *pixel_ctrl_ptr)
     plot_album(250, 80, 4);
     
     bool selectedNewAlbum = true;
+    bool keyDown = false;
 
     while (!album_select)
     {
         pollKeyboard();
         // draw each album in the menu
+        if(keyDown == true && keyboard_keys.last_key == KEY_NULL){
+            keyDown = false;
+        }
 
-        if (keyboard_keys.key == KEY_W && keyboard_keys.last_last_key == KEY_NULL){
+        if (keyboard_keys.key == KEY_W && keyboard_keys.last_last_key == KEY_NULL && keyDown == false){
             selected_album++; // moving up the array so --
             selectedNewAlbum = true;
-            printf("pressed w\n");
+            keyDown = true;
         }
             
-        else if (keyboard_keys.key == KEY_S && keyboard_keys.last_last_key == KEY_NULL){
+        else if (keyboard_keys.key == KEY_S && keyboard_keys.last_last_key == KEY_NULL && keyDown == false){
             selected_album--; // opposite
             selectedNewAlbum = true;
-            printf("pressed s\n");
+            keyDown = true;
         }
         if (selected_album < 0)
             selected_album = 4;
