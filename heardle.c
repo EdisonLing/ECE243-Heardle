@@ -375,13 +375,15 @@ int main(void)
 
         clearCharacterBuffer();
         updateHighScore(PlayerScore); // game ended
+
+        wait_for_vsync();
+        pixel_buffer_start = *(pixel_ctrl_ptr + 1); // New back buffer
+        drawEndScreen();
+        displayHighScore();
+        
         while (!(keyboard_keys.key == KEY_ESC && keyboard_keys.last_last_key == KEY_NULL))
         {
             pollKeyboard();
-            wait_for_vsync();
-            pixel_buffer_start = *(pixel_ctrl_ptr + 1); // New back buffer
-            drawEndScreen();
-            displayHighScore();
         }
         reset(); // reset game variables
     }
@@ -705,11 +707,9 @@ void writeRoundAndScore(bool endScreen)
     else
     { // end screen, move score
         // display score
-        char PlayerScoreStr[10];
-        sprintf(PlayerScoreStr, "%d", PlayerScore);
-        char score_label_str[] = "Final Score: ";
-        writeWord(score_label_str, calculateCenterText_X(score_label_str) - 4, 10);
-        writeWord(PlayerScoreStr, calculateCenterText_X(score_label_str) + getStringSize(score_label_str), 10);
+        char PlayerScoreStr[40];
+        sprintf(PlayerScoreStr, "Final Score: %d", PlayerScore);
+        writeWord(PlayerScoreStr, calculateCenterText_X(PlayerScoreStr), calculateCenterText_Y(PlayerScoreStr) - 5);
     }
 }
 
@@ -1029,10 +1029,14 @@ void updateHighScore(int highscore)
 
 void displayHighScore()
 {
-    printf("High Scores:\n");
+    char highscores_str[] = "High Scores:";
+    writeWord(highscores_str, 1, 3);
+
+    char highscore_num_str[40];
     for (int i = 0; i < 5; ++i)
     {
-        printf("%d. %d\n", i + 1, high_scores[i]);
+        sprintf(highscore_num_str, "%d: %d", i + 1, high_scores[i]);
+        writeWord(highscore_num_str, 1, 5 + (i * 2));
     }
 }
 
